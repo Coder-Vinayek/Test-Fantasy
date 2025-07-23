@@ -1775,3 +1775,267 @@ function getBanActionButton(user) {
                 </button>`;
     }
 }
+
+
+// Enhanced Admin Tournament Creation JavaScript
+
+// Game images mapping
+const gameImages = {
+    'Free Fire': '/images/games/freefire.jpg',
+    'BGMI': '/images/games/bgmi.jpg',
+    'Valorant': '/images/games/valorant.jpg',
+    'CODM': '/images/games/codm.jpg'
+};
+
+// Initialize enhanced tournament creation
+function initializeEnhancedTournamentCreation() {
+    const gameTypeSelect = document.getElementById('gameType');
+    const teamModeSelect = document.getElementById('teamMode');
+    const autoFillBtn = document.getElementById('autoFillBtn');
+    const tournamentForm = document.getElementById('createTournamentForm');
+    
+    // Auto-fill tournament name
+    if (autoFillBtn) {
+        autoFillBtn.addEventListener('click', autoFillTournamentName);
+    }
+    
+    // Live preview updates
+    if (gameTypeSelect) gameTypeSelect.addEventListener('change', updateTournamentPreview);
+    if (teamModeSelect) teamModeSelect.addEventListener('change', updateTournamentPreview);
+    
+    // Form inputs for preview
+    const previewInputs = [
+        'tournamentName', 'entryFee', 'prizePool', 'maxParticipants'
+    ];
+    
+    previewInputs.forEach(inputId => {
+        const input = document.getElementById(inputId);
+        if (input) {
+            input.addEventListener('input', updateTournamentPreview);
+        }
+    });
+    
+    // Enhanced form submission
+    if (tournamentForm) {
+        tournamentForm.removeEventListener('submit', handleTournamentCreation);
+        tournamentForm.addEventListener('submit', handleEnhancedTournamentCreation);
+    }
+    
+    // Set default values
+    setDefaultValues();
+}
+
+// Set default values for new fields
+function setDefaultValues() {
+    const killPointsInput = document.getElementById('killPoints');
+    const rankPointsInput = document.getElementById('rankPoints');
+    const matchTypeSelect = document.getElementById('matchType');
+    
+    if (killPointsInput && !killPointsInput.value) {
+        killPointsInput.value = '1';
+    }
+    
+    if (rankPointsInput && !rankPointsInput.value) {
+        rankPointsInput.value = '{"1":10,"2":8,"3":6,"4":4,"5":2,"6":1}';
+    }
+    
+    if (matchTypeSelect && !matchTypeSelect.value) {
+        matchTypeSelect.value = 'Battle Royale';
+    }
+}
+
+// Auto-fill tournament name based on selection
+function autoFillTournamentName() {
+    const gameType = document.getElementById('gameType').value;
+    const teamMode = document.getElementById('teamMode').value;
+    const tournamentNameInput = document.getElementById('tournamentName');
+    
+    if (!gameType || !teamMode) {
+        showMessage('Please select both game type and team mode first', 'warning');
+        return;
+    }
+    
+    const modeNames = {
+        'solo': 'Solo',
+        'duo': 'Duo',
+        'squad': 'Squad'
+    };
+    
+    const currentDate = new Date();
+    const dateString = currentDate.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric'
+    });
+    
+    const autoName = `${gameType} ${modeNames[teamMode]} Championship - ${dateString}`;
+    
+    if (tournamentNameInput) {
+        tournamentNameInput.value = autoName;
+        updateTournamentPreview();
+    }
+}
+
+// Update tournament preview
+function updateTournamentPreview() {
+    const gameType = document.getElementById('gameType').value;
+    const teamMode = document.getElementById('teamMode').value;
+    const tournamentName = document.getElementById('tournamentName').value;
+    const entryFee = document.getElementById('entryFee').value;
+    const prizePool = document.getElementById('prizePool').value;
+    const maxParticipants = document.getElementById('maxParticipants').value;
+    
+    const preview = document.getElementById('tournamentPreview');
+    const previewGameImage = document.getElementById('previewGameImage');
+    const previewGameBadge = document.getElementById('previewGameBadge');
+    const previewModeBadge = document.getElementById('previewModeBadge');
+    const previewName = document.getElementById('previewName');
+    const previewFee = document.getElementById('previewFee');
+    const previewPrize = document.getElementById('previewPrize');
+    const previewMax = document.getElementById('previewMax');
+    
+    // Show preview if we have basic info
+    if (gameType || teamMode || tournamentName) {
+        if (preview) preview.style.display = 'block';
+        
+        // Update preview content
+        if (previewGameImage && gameType) {
+            previewGameImage.src = gameImages[gameType] || '/images/games/default.jpg';
+        }
+        
+        if (previewGameBadge) {
+            previewGameBadge.textContent = gameType || 'Select Game';
+        }
+        
+        if (previewModeBadge) {
+            const modeLabels = { 'solo': 'Solo', 'duo': 'Duo', 'squad': 'Squad' };
+            previewModeBadge.textContent = modeLabels[teamMode] || 'Select Mode';
+        }
+        
+        if (previewName) {
+            previewName.textContent = tournamentName || 'Tournament Name';
+        }
+        
+        if (previewFee) {
+            previewFee.textContent = entryFee || '0';
+        }
+        
+        if (previewPrize) {
+            previewPrize.textContent = prizePool || '0';
+        }
+        
+        if (previewMax) {
+            previewMax.textContent = maxParticipants || '0';
+        }
+    } else {
+        if (preview) preview.style.display = 'none';
+    }
+}
+
+// Enhanced tournament creation handler
+async function handleEnhancedTournamentCreation(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const tournamentData = {
+        name: formData.get('name'),
+        description: formData.get('description'),
+        game_type: formData.get('game_type'),
+        team_mode: formData.get('team_mode'),
+        entry_fee: parseFloat(formData.get('entry_fee')),
+        prize_pool: parseFloat(formData.get('prize_pool')),
+        max_participants: parseInt(formData.get('max_participants')),
+        start_date: formData.get('start_date'),
+        end_date: formData.get('end_date'),
+        kill_points: parseInt(formData.get('kill_points')) || 1,
+        rank_points: formData.get('rank_points') || '{"1":10,"2":8,"3":6,"4":4,"5":2,"6":1}',
+        match_type: formData.get('match_type') || 'Battle Royale'
+    };
+    
+    // Validation
+    if (!tournamentData.name || !tournamentData.game_type || !tournamentData.team_mode) {
+        showMessage('Please fill in all required fields including game type and team mode', 'error');
+        return;
+    }
+    
+    // Validate JSON format for rank points
+    try {
+        JSON.parse(tournamentData.rank_points);
+    } catch (error) {
+        showMessage('Invalid rank points format. Please use valid JSON format.', 'error');
+        return;
+    }
+    
+    // Validate dates
+    const startDate = new Date(tournamentData.start_date);
+    const endDate = new Date(tournamentData.end_date);
+    const now = new Date();
+    
+    if (startDate < now) {
+        showMessage('Start date cannot be in the past', 'error');
+        return;
+    }
+    
+    if (endDate <= startDate) {
+        showMessage('End date must be after start date', 'error');
+        return;
+    }
+    
+    try {
+        const submitBtn = e.target.querySelector('.create-tournament-btn');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '🔄 Creating Tournament...';
+        }
+        
+        // Use enhanced API endpoint
+        const response = await fetch('/api/admin/tournaments/enhanced', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(tournamentData)
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            showMessage(result.message || 'Enhanced tournament created successfully!', 'success');
+            
+            // Reset form
+            e.target.reset();
+            setDefaultValues();
+            updateTournamentPreview();
+            
+            // Refresh tournaments list if visible
+            if (typeof loadTournaments === 'function') {
+                await loadTournaments();
+            }
+            
+        } else {
+            throw new Error(result.error || 'Failed to create tournament');
+        }
+        
+    } catch (error) {
+        console.error('Enhanced tournament creation error:', error);
+        showMessage(error.message || 'Failed to create tournament', 'error');
+    } finally {
+        const submitBtn = e.target.querySelector('.create-tournament-btn');
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '🚀 Create Enhanced Tournament';
+        }
+    }
+}
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    // Small delay to ensure all elements are loaded
+    setTimeout(() => {
+        initializeEnhancedTournamentCreation();
+    }, 500);
+});
+
+// Make functions available globally
+window.initializeEnhancedTournamentCreation = initializeEnhancedTournamentCreation;
+window.autoFillTournamentName = autoFillTournamentName;
+window.updateTournamentPreview = updateTournamentPreview;
