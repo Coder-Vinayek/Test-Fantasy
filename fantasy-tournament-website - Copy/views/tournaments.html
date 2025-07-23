@@ -4,7 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tournaments - Fantasy Tournament</title>
+    
+    <!-- Your existing CSS -->
     <link rel="stylesheet" href="/css/style.css">
+    
+    <!-- NEW: Enhanced Tournament CSS -->
+    <link rel="stylesheet" href="/css/tournament-enhanced.css">
 </head>
 <body>
     <div class="container">
@@ -17,28 +22,123 @@
                 <button id="logoutBtn" class="btn btn-small">Logout</button>
             </nav>
         </header>
-        
+
         <main class="main-content">
             <div class="page-header">
-                <h2>Tournaments</h2>
+                <h2>Gaming Tournaments</h2>
                 <div class="user-balance">
                     <span>Wallet: $<span id="walletBalance">0.00</span></span>
                     <span>Winnings: $<span id="winningsBalance">0.00</span></span>
                 </div>
             </div>
-            
-            <div id="tournamentsContainer" class="tournaments-grid">
-                <!-- Tournaments will be loaded here -->
+
+            <!-- NEW: Tournament Filters -->
+            <div class="tournament-filters">
+                <div class="filter-group">
+                    <label for="gameFilter">Game:</label>
+                    <select id="gameFilter">
+                        <option value="all">All Games</option>
+                        <option value="Free Fire">Free Fire</option>
+                        <option value="BGMI">BGMI</option>
+                        <option value="Valorant">Valorant</option>
+                        <option value="CODM">CODM</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="modeFilter">Mode:</label>
+                    <select id="modeFilter">
+                        <option value="all">All Modes</option>
+                        <option value="solo">Solo</option>
+                        <option value="duo">Duo</option>
+                        <option value="squad">Squad</option>
+                    </select>
+                </div>
             </div>
-            
+
+            <!-- UPDATED: Tournament container with new ID -->
+            <div id="tournaments-container">
+                <div id="tournaments-grid" class="tournaments-grid">
+                    <!-- Enhanced tournament cards will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Keep your existing message div -->
             <div id="message" class="message"></div>
         </main>
-        
+
         <footer class="footer">
             <p>&copy; 2025 Fantasy Tournament. All rights reserved.</p>
         </footer>
     </div>
-    
+
+    <!-- Your existing JavaScript -->
     <script src="/js/tournaments.js"></script>
+    
+    <!-- NEW: Enhanced Tournament JavaScript -->
+    <script src="/js/tournament-enhanced.js"></script>
+
+    <style>
+        /* Additional styles for filters */
+        .tournament-filters {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .filter-group label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+        }
+        
+        .filter-group select {
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 14px;
+            min-width: 120px;
+        }
+        
+        .filter-group select:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+        
+        .filter-group select option {
+            background: #1e1e2e;
+            color: white;
+        }
+        
+        @media (max-width: 768px) {
+            .tournament-filters {
+                flex-direction: column;
+                gap: 16px;
+            }
+            
+            .filter-group {
+                flex-direction: row;
+                justify-content: space-between;
+                width: 100%;
+                max-width: 200px;
+                margin: 0 auto;
+            }
+        }
+    </style>
 </body>
 </html>
