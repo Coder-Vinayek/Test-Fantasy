@@ -1,5 +1,5 @@
 /**
- * Enhanced Tournament Registration System - FIXED VERSION
+ * Enhanced Tournament Registration System - FINAL VERSION
  * Compatible with older browsers and Windows 7
  */
 
@@ -53,7 +53,8 @@ function setupEventListeners() {
         }
     });
     
-    // Filter event listeners will be set up after tournaments load
+    // Note: Filter event listeners are now set up in setupFilterEventListeners()
+    // after tournaments are loaded
 }
 
 // FIXED: Setup filter event listeners after tournaments are loaded
@@ -155,12 +156,16 @@ function createTournamentCard(tournament) {
     const startDate = new Date(tournament.start_date).toLocaleDateString();
     const startTime = new Date(tournament.start_date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
     
+    // Fixed image handling - no infinite loop
+    const gameImageUrl = gameImages[tournament.game_type] || gameImages['Free Fire'];
+    
     return `
         <div class="tournament-card game-${gameClass}">
             <div class="tournament-card-header">
-                <img src="${gameImages[tournament.game_type] || '/images/games/default.jpg'}" 
-                     alt="${tournament.game_type || 'Tournament'}" class="game-image"
-                     onerror="this.src='/images/games/default.jpg'">
+                <img src="${gameImageUrl}" 
+                     alt="${tournament.game_type || 'Tournament'}" 
+                     class="game-image"
+                     onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDMyMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMjAiIGhlaWdodD0iMjAwIiBmaWxsPSIjNjY3ZWVhIi8+Cjx0ZXh0IHg9IjE2MCIgeT0iMTAwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSJ3aGl0ZSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE2IiBmb250LXdlaWdodD0iYm9sZCI+8J+OriDwn46uPC90ZXh0Pjx0ZXh0IHg9IjE2MCIgeT0iMTIwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSJ3aGl0ZSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEyIj5HYW1lIEltYWdlPC90ZXh0Pjwvc3ZnPg==';">
                 <div class="game-badge">${tournament.game_type || 'Free Fire'}</div>
                 <div class="team-mode-badge">${modeConfig.label}</div>
             </div>
