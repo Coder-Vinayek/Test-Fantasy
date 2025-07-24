@@ -1817,7 +1817,7 @@ function initializeEnhancedTournamentCreation() {
     
     // Enhanced form submission
     if (tournamentForm) {
-        tournamentForm.removeEventListener('submit', handleTournamentCreation);
+        tournamentForm.removeEventListener('submit', handleEnhancedTournamentCreation);
         tournamentForm.addEventListener('submit', handleEnhancedTournamentCreation);
     }
     
