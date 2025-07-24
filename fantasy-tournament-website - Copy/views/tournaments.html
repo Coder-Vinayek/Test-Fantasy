@@ -4,11 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tournaments - Fantasy Tournament</title>
-    
     <!-- Your existing CSS -->
     <link rel="stylesheet" href="/css/style.css">
-    
-    <!-- NEW: Enhanced Tournament CSS -->
+    <!-- Enhanced Tournament CSS -->
     <link rel="stylesheet" href="/css/tournament-enhanced.css">
 </head>
 <body>
@@ -32,7 +30,7 @@
                 </div>
             </div>
 
-            <!-- NEW: Tournament Filters -->
+            <!-- FIXED: Tournament Filters -->
             <div class="tournament-filters">
                 <div class="filter-group">
                     <label for="gameFilter">Game:</label>
@@ -44,7 +42,6 @@
                         <option value="CODM">CODM</option>
                     </select>
                 </div>
-                
                 <div class="filter-group">
                     <label for="modeFilter">Mode:</label>
                     <select id="modeFilter">
@@ -54,16 +51,30 @@
                         <option value="squad">Squad</option>
                     </select>
                 </div>
-            </div>
-
-            <!-- UPDATED: Tournament container with new ID -->
-            <div id="tournaments-container">
-                <div id="tournaments-grid" class="tournaments-grid">
-                    <!-- Enhanced tournament cards will be loaded here -->
+                <div class="filter-group">
+                    <button id="clearFilters" class="btn btn-secondary">Clear Filters</button>
                 </div>
             </div>
 
-            <!-- Keep your existing message div -->
+            <!-- FIXED: Standardized container structure -->
+            <div id="tournaments-container" class="tournaments-container">
+                <div id="tournaments-grid" class="tournaments-grid">
+                    <!-- Tournament cards will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Loading state -->
+            <div id="loading-state" class="loading-state" style="display: none;">
+                <div class="spinner"></div>
+                <p>Loading tournaments...</p>
+            </div>
+
+            <!-- Error state -->
+            <div id="error-state" class="error-state" style="display: none;">
+                <p>Failed to load tournaments. <button id="retry-btn" class="btn btn-primary">Retry</button></p>
+            </div>
+
+            <!-- Message container -->
             <div id="message" class="message"></div>
         </main>
 
@@ -72,14 +83,11 @@
         </footer>
     </div>
 
-    <!-- Your existing JavaScript -->
+    <!-- FIXED: Load only one JavaScript file to avoid conflicts -->
     <script src="/js/tournaments.js"></script>
-    
-    <!-- NEW: Enhanced Tournament JavaScript -->
-    <script src="/js/tournament-enhanced.js"></script>
 
     <style>
-        /* Additional styles for filters */
+        /* Enhanced filter styles */
         .tournament-filters {
             display: flex;
             gap: 20px;
@@ -87,55 +95,93 @@
             margin-bottom: 30px;
             flex-wrap: wrap;
             padding: 20px;
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(255,255,255,0.05);
             border-radius: 12px;
             backdrop-filter: blur(10px);
         }
-        
+
         .filter-group {
             display: flex;
             flex-direction: column;
             align-items: center;
             gap: 8px;
         }
-        
+
         .filter-group label {
             font-size: 14px;
             font-weight: 600;
             color: #fff;
         }
-        
-        .filter-group select {
+
+        .filter-group select,
+        .filter-group button {
             padding: 8px 12px;
             border-radius: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.1);
             color: white;
             font-size: 14px;
             min-width: 120px;
+            cursor: pointer;
         }
-        
-        .filter-group select:focus {
+
+        .filter-group select:focus,
+        .filter-group button:focus {
             outline: none;
-            border-color: rgba(255, 255, 255, 0.5);
+            border-color: rgba(255,255,255,0.5);
         }
-        
+
         .filter-group select option {
             background: #1e1e2e;
             color: white;
         }
-        
+
+        /* Loading and error states */
+        .loading-state {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-state {
+            text-align: center;
+            padding: 40px;
+            color: #ff6b6b;
+        }
+
+        .no-tournaments {
+            text-align: center;
+            padding: 60px 20px;
+            color: #888;
+            font-size: 16px;
+        }
+
         @media (max-width: 768px) {
             .tournament-filters {
                 flex-direction: column;
                 gap: 16px;
             }
-            
+
             .filter-group {
                 flex-direction: row;
                 justify-content: space-between;
                 width: 100%;
-                max-width: 200px;
+                max-width: 300px;
                 margin: 0 auto;
             }
         }
