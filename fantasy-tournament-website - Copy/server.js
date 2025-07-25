@@ -286,6 +286,16 @@ app.get('/api/admin/session-check', async (req, res) => {
     }
 });
 
+function getGameImageUrl(gameType) {
+    const gameImages = {
+        'Free Fire': '/images/games/freefire.jpg',
+        'BGMI': '/images/games/bgmi.jpg',
+        'Valorant': '/images/games/valorant.jpg',
+        'CODM': '/images/games/codm.jpg'
+    };
+    return gameImages[gameType] || '/images/games/freefire.jpg';
+}
+
 // API Routes - User Info
 app.get('/api/user', requireAuth, async (req, res) => {
     try {
@@ -310,6 +320,8 @@ app.get('/api/user', requireAuth, async (req, res) => {
 // API Routes - Tournaments
 app.get('/api/tournaments', requireAuth, async (req, res) => {
     try {
+        console.log('Loading tournaments for user:', req.session.userId);
+        
         const { data: tournaments, error } = await supabase
             .from('tournaments')
             .select(`
@@ -323,16 +335,27 @@ app.get('/api/tournaments', requireAuth, async (req, res) => {
             return res.status(500).json({ error: 'Failed to get tournaments' });
         }
 
-        // Transform data to match expected format
-        const tournamentsWithRegistration = tournaments.map(tournament => ({
-            ...tournament,
-            is_registered: tournament.tournament_registrations.some(reg => reg.user_id === req.session.userId) ? 1 : 0
-        }));
+        // FIXED: Add game data to each tournament
+        const tournamentsWithRegistration = tournaments.map(tournament => {
+            const gameType = tournament.game_type || 'Free Fire';
+            const teamMode = tournament.team_mode || 'solo';
+            const gameImageUrl = tournament.game_image_url || getGameImageUrl(gameType);
 
+            return {
+                ...tournament,
+                game_type: gameType,
+                team_mode: teamMode,
+                game_image_url: gameImageUrl,
+                is_registered: tournament.tournament_registrations.some(reg => reg.user_id === req.session.userId) ? 1 : 0
+            };
+        });
+
+        console.log('Processed tournaments:', tournamentsWithRegistration.length);
         res.json(tournamentsWithRegistration);
+
     } catch (error) {
         console.error('Get tournaments error:', error);
-        return res.status(500).json({ error: 'Failed to get tournaments' });
+        res.status(500).json({ error: 'Failed to get tournaments' });
     }
 });
 
@@ -722,34 +745,6 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
 });
 
 // Admin Tournaments Routes
-app.post('/api/admin/tournaments', requireAdmin, async (req, res) => {
-    const { name, description, entry_fee, prize_pool, max_participants, start_date, end_date } = req.body;
-
-    try {
-        const { data, error } = await supabase
-            .from('tournaments')
-            .insert([{
-                name,
-                description,
-                entry_fee,
-                prize_pool,
-                max_participants,
-                start_date,
-                end_date
-            }]);
-
-        if (error) {
-            console.error('Create tournament error:', error);
-            return res.status(500).json({ error: 'Failed to create tournament' });
-        }
-
-        res.json({ success: true, message: 'Tournament created successfully' });
-    } catch (error) {
-        console.error('Create tournament error:', error);
-        return res.status(500).json({ error: 'Failed to create tournament' });
-    }
-});
-
 app.get('/api/admin/tournaments', requireAdmin, async (req, res) => {
     try {
         const { data: tournaments, error } = await supabase
@@ -1898,7 +1893,7 @@ app.post('/api/admin/tournaments/enhanced', requireAdmin, async (req, res) => {
                 kill_points: parseInt(kill_points) || 1,
                 rank_points: rank_points || '{"1":10,"2":8,"3":6,"4":4,"5":2,"6":1}',
                 match_type: match_type || 'Battle Royale',
-                game_image_url: `/images/games/${game_type.toLowerCase().replace(' ', '')}.jpg`,
+                game_image_url: getGameImageUrl(game_type), // FIXED: Use helper function
                 status: 'upcoming',
                 current_participants: 0
             }])
@@ -1958,6 +1953,28 @@ app.get('/api/tournament/:id/teams', requireAuth, async (req, res) => {
     } catch (error) {
         console.error('Get teams error:', error);
         return res.status(500).json({ error: 'Failed to get teams' });
+    }
+});
+
+app.get('/api/debug/tournaments', requireAuth, async (req, res) => {
+    try {
+        const { data: tournaments, error } = await supabase
+            .from('tournaments')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(3);
+
+        if (error) {
+            return res.status(500).json({ error: error.message });
+        }
+
+        res.json({
+            message: 'DEBUG: Raw tournament data from database',
+            tournaments: tournaments,
+            count: tournaments.length
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
 });
 
