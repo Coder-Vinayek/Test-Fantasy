@@ -1,6 +1,6 @@
 /**
- * Unified Tournament System - Fixed Version
- * Resolves all filter issues and JavaScript conflicts
+ * FIXED Tournament System - Resolves hardcoded Free Fire display issue
+ * This replaces the existing tournaments.js file
  */
 
 // Global state management
@@ -18,10 +18,10 @@ let state = {
 // DOM elements cache
 let elements = {};
 
-// Game configurations
+// Game configurations - FIXED: Using actual database field values
 const gameImages = {
     'Free Fire': '/images/games/freefire.jpg',
-    'BGMI': '/images/games/bgmi.jpg',
+    'BGMI': '/images/games/bgmi.jpg', 
     'Valorant': '/images/games/valorant.jpg',
     'CODM': '/images/games/codm.jpg'
 };
@@ -32,9 +32,16 @@ const teamModeConfig = {
     'squad': { size: 4, label: 'Squad' }
 };
 
+// FIXED: Default values for tournaments without game_type
+const defaultGameData = {
+    game_type: 'Free Fire',
+    team_mode: 'solo',
+    game_image_url: '/images/games/freefire.jpg'
+};
+
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Tournament system initializing...');
+    console.log('FIXED Tournament system initializing...');
     initializeSystem();
 });
 
@@ -45,20 +52,20 @@ async function initializeSystem() {
     try {
         // Cache DOM elements
         cacheElements();
-        
+
         // Setup event listeners
         setupEventListeners();
-        
+
         // Load initial data
         await Promise.all([
             loadUserInfo(),
             loadTournaments()
         ]);
-        
+
         // Setup filters AFTER tournaments are loaded
         setupFilters();
-        
-        console.log('Tournament system initialized successfully');
+
+        console.log('FIXED Tournament system initialized successfully');
     } catch (error) {
         console.error('Failed to initialize tournament system:', error);
         showError('Failed to initialize system. Please refresh the page.');
@@ -94,7 +101,7 @@ function setupEventListeners() {
     if (elements.logoutBtn) {
         elements.logoutBtn.addEventListener('click', handleLogout);
     }
-    
+
     // Retry handler
     if (elements.retryBtn) {
         elements.retryBtn.addEventListener('click', () => {
@@ -102,84 +109,248 @@ function setupEventListeners() {
             loadTournaments();
         });
     }
-    
-    // Tournament card interactions (event delegation)
-    if (elements.tournamentsGrid) {
-        elements.tournamentsGrid.addEventListener('click', handleTournamentInteraction);
-    }
 }
 
 /**
- * Setup filter functionality AFTER tournaments are loaded
+ * Setup filter functionality
  */
 function setupFilters() {
-    console.log('Setting up filters with', state.allTournaments.length, 'tournaments');
-    
-    // Game filter
     if (elements.gameFilter) {
-        elements.gameFilter.removeEventListener('change', handleFilterChange);
-        elements.gameFilter.addEventListener('change', handleFilterChange);
+        elements.gameFilter.addEventListener('change', applyFilters);
     }
-    
-    // Mode filter
+
     if (elements.modeFilter) {
-        elements.modeFilter.removeEventListener('change', handleFilterChange);
-        elements.modeFilter.addEventListener('change', handleFilterChange);
+        elements.modeFilter.addEventListener('change', applyFilters);
     }
-    
-    // Clear filters
+
     if (elements.clearFilters) {
         elements.clearFilters.addEventListener('click', clearAllFilters);
     }
-    
-    console.log('Filters setup complete');
 }
 
 /**
- * Handle filter changes
+ * FIXED: Load tournaments using enhanced API
  */
-function handleFilterChange() {
-    // Update current filters
-    state.currentFilters.game = elements.gameFilter ? elements.gameFilter.value : 'all';
-    state.currentFilters.mode = elements.modeFilter ? elements.modeFilter.value : 'all';
-    
-    console.log('Filter changed:', state.currentFilters);
-    
-    // Apply filters
-    applyFilters();
+async function loadTournaments() {
+    try {
+        showLoading();
+        state.isLoading = true;
+
+        console.log('Loading tournaments from enhanced API...');
+        
+        // FIXED: Use enhanced tournaments API endpoint
+        const response = await fetch('/api/tournaments/enhanced');
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const tournaments = await response.json();
+        console.log('Raw tournaments data:', tournaments);
+
+        // FIXED: Process tournaments to ensure they have game data
+        state.allTournaments = tournaments.map(tournament => {
+            return {
+                ...tournament,
+                // Use database values or fallback to defaults
+                game_type: tournament.game_type || defaultGameData.game_type,
+                team_mode: tournament.team_mode || defaultGameData.team_mode,
+                game_image_url: tournament.game_image_url || gameImages[tournament.game_type] || defaultGameData.game_image_url
+            };
+        });
+
+        state.filteredTournaments = [...state.allTournaments];
+
+        console.log('Processed tournaments:', state.allTournaments);
+
+        renderTournaments();
+        hideLoading();
+
+    } catch (error) {
+        console.error('Error loading tournaments:', error);
+        showError('Failed to load tournaments. Please try again.');
+        state.allTournaments = [];
+        state.filteredTournaments = [];
+    } finally {
+        state.isLoading = false;
+    }
 }
 
 /**
- * Apply current filters to tournaments
+ * FIXED: Render tournaments with proper game data
  */
-function applyFilters() {
-    if (!state.allTournaments || state.allTournaments.length === 0) {
-        console.log('No tournaments to filter');
+function renderTournaments() {
+    if (!elements.tournamentsGrid) {
+        console.error('Tournaments grid element not found');
         return;
     }
+
+    elements.tournamentsGrid.innerHTML = '';
+
+    if (state.filteredTournaments.length === 0) {
+        elements.tournamentsGrid.innerHTML = `
+            <div class="no-tournaments">
+                <h3>No tournaments found</h3>
+                <p>Try adjusting your filters or check back later for new tournaments.</p>
+            </div>
+        `;
+        return;
+    }
+
+    state.filteredTournaments.forEach(tournament => {
+        const card = createTournamentCard(tournament);
+        elements.tournamentsGrid.appendChild(card);
+    });
+}
+
+/**
+ * FIXED: Create tournament card with dynamic data
+ */
+function createTournamentCard(tournament) {
+    const card = document.createElement('div');
+    card.className = 'tournament-card';
+    card.dataset.tournamentId = tournament.id;
+
+    // FIXED: Use actual tournament data instead of hardcoded values
+    const gameType = tournament.game_type || 'Unknown Game';
+    const teamMode = tournament.team_mode || 'solo';
+    const gameImage = tournament.game_image_url || gameImages[gameType] || '/images/games/default.jpg';
     
-    let filtered = [...state.allTournaments];
+    const teamModeLabel = teamModeConfig[teamMode]?.label || teamMode.charAt(0).toUpperCase() + teamMode.slice(1);
     
-    // Apply game filter
-    if (state.currentFilters.game && state.currentFilters.game !== 'all') {
-        filtered = filtered.filter(tournament => {
-            const gameType = tournament.game_type || 'Free Fire';
-            return gameType === state.currentFilters.game;
+    // Format dates
+    const startDate = formatDate(tournament.start_date);
+    const startTime = formatTime(tournament.start_date);
+
+    // Registration status
+    const isRegistered = tournament.is_registered === 1;
+    const isFull = tournament.current_participants >= tournament.max_participants;
+
+    card.innerHTML = `
+        <div class="tournament-card-header">
+            <div class="tournament-image-container">
+                <img src="${gameImage}" alt="${gameType}" class="tournament-image" 
+                     onerror="this.src='/images/games/default.jpg'">
+                <div class="tournament-status ${tournament.status}">${tournament.status.toUpperCase()}</div>
+            </div>
+        </div>
+        
+        <div class="tournament-card-body">
+            <div class="tournament-badges">
+                <span class="game-badge">${escapeHtml(gameType)}</span>
+                <span class="mode-badge">${escapeHtml(teamModeLabel)}</span>
+            </div>
+            
+            <h3 class="tournament-name">${escapeHtml(tournament.name)}</h3>
+            <p class="tournament-description">${escapeHtml(tournament.description || 'No description available')}</p>
+            
+            <div class="tournament-details">
+                <div class="detail-row">
+                    <span class="detail-label">Prize Pool:</span>
+                    <span class="detail-value prize">₹${tournament.prize_pool}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Entry Fee:</span>
+                    <span class="detail-value fee">₹${tournament.entry_fee}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Participants:</span>
+                    <span class="detail-value">${tournament.current_participants}/${tournament.max_participants}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Date:</span>
+                    <span class="detail-value">${startDate}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Time:</span>
+                    <span class="detail-value">${startTime}</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="tournament-card-footer">
+            ${createActionButton(tournament, isRegistered, isFull)}
+        </div>
+    `;
+
+    // Add event listeners
+    setupCardEventListeners(card, tournament);
+
+    return card;
+}
+
+/**
+ * Create action button based on tournament state
+ */
+function createActionButton(tournament, isRegistered, isFull) {
+    if (isRegistered) {
+        return `
+            <button class="btn btn-success btn-block" disabled>
+                ✓ Registered
+            </button>
+            <button class="btn btn-primary btn-sm view-lobby-btn" data-tournament-id="${tournament.id}">
+                View Lobby
+            </button>
+        `;
+    }
+
+    if (isFull) {
+        return `<button class="btn btn-secondary btn-block" disabled>Tournament Full</button>`;
+    }
+
+    if (tournament.status !== 'upcoming') {
+        return `<button class="btn btn-secondary btn-block" disabled>Registration Closed</button>`;
+    }
+
+    return `<button class="btn btn-primary btn-block register-btn" data-tournament-id="${tournament.id}">
+        Register Now
+    </button>`;
+}
+
+/**
+ * Setup event listeners for tournament card
+ */
+function setupCardEventListeners(card, tournament) {
+    // Register button
+    const registerBtn = card.querySelector('.register-btn');
+    if (registerBtn) {
+        registerBtn.addEventListener('click', () => registerForTournament(tournament.id));
+    }
+
+    // View lobby button
+    const lobbyBtn = card.querySelector('.view-lobby-btn');
+    if (lobbyBtn) {
+        lobbyBtn.addEventListener('click', () => {
+            window.location.href = `/tournament/${tournament.id}`;
         });
     }
-    
-    // Apply mode filter
-    if (state.currentFilters.mode && state.currentFilters.mode !== 'all') {
-        filtered = filtered.filter(tournament => {
-            const teamMode = tournament.team_mode || 'solo';
-            return teamMode === state.currentFilters.mode;
-        });
-    }
-    
-    console.log(`Filtered ${state.allTournaments.length} tournaments to ${filtered.length}`);
-    
-    state.filteredTournaments = filtered;
-    renderTournaments(filtered);
+
+    // Card click for details
+    card.addEventListener('click', (e) => {
+        if (!e.target.closest('button')) {
+            showTournamentDetails(tournament);
+        }
+    });
+}
+
+/**
+ * Apply filters to tournaments
+ */
+function applyFilters() {
+    const gameFilter = elements.gameFilter?.value || 'all';
+    const modeFilter = elements.modeFilter?.value || 'all';
+
+    state.currentFilters = { game: gameFilter, mode: modeFilter };
+
+    state.filteredTournaments = state.allTournaments.filter(tournament => {
+        const gameMatch = gameFilter === 'all' || tournament.game_type === gameFilter;
+        const modeMatch = modeFilter === 'all' || tournament.team_mode === modeFilter;
+        
+        return gameMatch && modeMatch;
+    });
+
+    console.log('Filtered tournaments:', state.filteredTournaments);
+    renderTournaments();
 }
 
 /**
@@ -190,9 +361,39 @@ function clearAllFilters() {
     if (elements.modeFilter) elements.modeFilter.value = 'all';
     
     state.currentFilters = { game: 'all', mode: 'all' };
-    
     state.filteredTournaments = [...state.allTournaments];
-    renderTournaments(state.filteredTournaments);
+    
+    renderTournaments();
+}
+
+/**
+ * Register for tournament
+ */
+async function registerForTournament(tournamentId) {
+    try {
+        showMessage('Processing registration...', 'info');
+
+        const response = await fetch('/api/tournaments/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ tournamentId })
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+            showMessage(result.message, 'success');
+            await loadTournaments(); // Refresh tournaments
+            await loadUserInfo(); // Refresh balance
+        } else {
+            throw new Error(result.error || 'Registration failed');
+        }
+    } catch (error) {
+        console.error('Registration error:', error);
+        showMessage(error.message, 'error');
+    }
 }
 
 /**
@@ -202,362 +403,22 @@ async function loadUserInfo() {
     try {
         const response = await fetch('/api/user');
         if (!response.ok) throw new Error('Failed to load user info');
-        
-        state.currentUser = await response.json();
-        
-        // Update UI
+
+        const user = await response.json();
+        state.currentUser = user;
+
         if (elements.usernameDisplay) {
-            elements.usernameDisplay.textContent = `Welcome, ${state.currentUser.username}`;
+            elements.usernameDisplay.textContent = user.username;
         }
-        
         if (elements.walletBalance) {
-            elements.walletBalance.textContent = state.currentUser.wallet_balance.toFixed(2);
+            elements.walletBalance.textContent = user.wallet_balance.toFixed(2);
         }
-        
         if (elements.winningsBalance) {
-            elements.winningsBalance.textContent = state.currentUser.winnings_balance.toFixed(2);
+            elements.winningsBalance.textContent = user.winnings_balance.toFixed(2);
         }
-        
-        console.log('User info loaded:', state.currentUser.username);
     } catch (error) {
         console.error('Error loading user info:', error);
-        // Don't show error for user info as it's not critical
     }
-}
-
-/**
- * Load tournaments from server
- */
-async function loadTournaments() {
-    try {
-        showLoading();
-        hideError();
-        
-        // Try enhanced API first, fallback to basic
-        let response;
-        try {
-            response = await fetch('/api/tournaments/enhanced');
-            if (!response.ok) throw new Error('Enhanced API failed');
-        } catch (enhancedError) {
-            console.log('Enhanced API failed, using fallback');
-            response = await fetch('/api/tournaments');
-            if (!response.ok) throw new Error('Fallback API failed');
-        }
-        
-        const tournaments = await response.json();
-        
-        // Store tournaments
-        state.allTournaments = tournaments;
-        state.filteredTournaments = [...tournaments];
-        
-        console.log('Loaded tournaments:', tournaments.length);
-        
-        // Render tournaments
-        renderTournaments(tournaments);
-        
-    } catch (error) {
-        console.error('Error loading tournaments:', error);
-        showError('Failed to load tournaments');
-    } finally {
-        hideLoading();
-    }
-}
-
-/**
- * Render tournaments to the grid
- */
-function renderTournaments(tournaments) {
-    if (!elements.tournamentsGrid) {
-        console.error('Tournament grid element not found');
-        return;
-    }
-    
-    console.log('Rendering tournaments:', tournaments.length);
-    
-    if (tournaments.length === 0) {
-        elements.tournamentsGrid.innerHTML = `
-            <div class="no-tournaments">
-                <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;">🎮</div>
-                <div>No tournaments match your filters</div>
-                <div style="margin-top: 12px; font-size: 14px; opacity: 0.7;">
-                    Try changing your filter selection
-                </div>
-            </div>
-        `;
-        return;
-    }
-    
-    // Render tournament cards
-    elements.tournamentsGrid.innerHTML = tournaments
-        .map(tournament => createTournamentCard(tournament))
-        .join('');
-}
-
-
- /* Create tournament card HTML*/
- 
- function createTournamentCard(tournament) {
-    const gameClass = (tournament.game_type || 'freefire').toLowerCase().replace(' ', '');
-    const modeConfig = teamModeConfig[tournament.team_mode || 'solo'] || teamModeConfig.solo;
-    const statusClass = 'status-' + tournament.status;
-    const isRegistered = tournament.is_registered === 1;
-    const isFull = tournament.current_participants >= tournament.max_participants;
-    
-    // Format dates safely
-    const startDate = formatDate(tournament.start_date);
-    const startTime = formatTime(tournament.start_date);
-    
-    // FIXED: Better image handling with proper fallback
-    const gameImageUrl = gameImages[tournament.game_type] || gameImages['Free Fire'];
-    const fallbackImageUrl = 'https://via.placeholder.com/320x200/667eea/ffffff?text=' + encodeURIComponent('🎮 ' + (tournament.game_type || 'Game'));
-    
-    return `
-        <div class="tournament-card game-${gameClass}" data-tournament-id="${tournament.id}">
-            <div class="tournament-card-header">
-                <img src="${gameImageUrl}"
-                     alt="${tournament.game_type || 'Tournament'}"
-                     class="game-image"
-                     onerror="handleImageError(this, '${fallbackImageUrl}')">
-                <div class="game-badge">${tournament.game_type || 'Free Fire'}</div>
-                <div class="team-mode-badge">${modeConfig.label}</div>
-            </div>
-            
-            <div class="tournament-card-content">
-                <h3 class="tournament-title">${escapeHtml(tournament.name)}</h3>
-                <p class="tournament-description">${escapeHtml(tournament.description || 'Join this exciting tournament!')}</p>
-                
-                <div class="tournament-stats">
-                    <div class="stat-item">
-                        <div class="stat-label">Prize Pool</div>
-                        <div class="stat-value prize">₹${tournament.prize_pool}</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-label">Entry Fee</div>
-                        <div class="stat-value fee">₹${tournament.entry_fee}</div>
-                    </div>
-                </div>
-                
-                <div class="tournament-info">
-                    <div class="participants-info">
-                        <span class="participants-count">${tournament.current_participants}</span>/${tournament.max_participants} players
-                    </div>
-                    <div class="tournament-status ${statusClass}">${tournament.status}</div>
-                </div>
-                
-                <div class="tournament-schedule">
-                    <div class="schedule-item">
-                        <span class="schedule-label">Date:</span>
-                        <span class="schedule-value">${startDate}</span>
-                    </div>
-                    <div class="schedule-item">
-                        <span class="schedule-label">Time:</span>
-                        <span class="schedule-value">${startTime}</span>
-                    </div>
-                </div>
-                
-                ${renderRegisterButton(tournament, isRegistered, isFull)}
-            </div>
-        </div>
-    `;
-}
-
-/**
- * FIXED: Handle image errors properly without infinite loops
- */
- function handleImageError(img, fallbackUrl) {
-    // Prevent infinite loop - check if already failed
-    if (img.hasAttribute('data-fallback-failed')) {
-        console.log('Image fallback already failed, creating game icon');
-        createGameIcon(img);
-        return;
-    }
-    
-    // Mark as failed to prevent infinite loop
-    img.setAttribute('data-fallback-failed', 'true');
-    
-    // Remove the onerror to prevent further calls
-    img.onerror = null;
-    
-    // Create a simple game icon instead
-    createGameIcon(img);
-}
-
-/**
- * Create a simple game icon when image fails
- */
-function createGameIcon(img) {
-    // Hide the broken image
-    img.style.display = 'none';
-    
-    // Get the game type from alt text or parent
-    const gameType = img.alt || 'Game';
-    
-    // Create icon container
-    const iconContainer = document.createElement('div');
-    iconContainer.className = 'game-icon-fallback';
-    iconContainer.style.cssText = `
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: 200px;
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        color: white;
-        font-size: 48px;
-        text-align: center;
-        flex-direction: column;
-        gap: 8px;
-    `;
-    
-    // Add game icon and text
-    iconContainer.innerHTML = `
-        <div style="font-size: 48px;">🎮</div>
-        <div style="font-size: 14px; font-weight: 600;">${gameType}</div>
-    `;
-    
-    // Replace the image with icon
-    img.parentElement.appendChild(iconContainer);
-}
-
-// Make function globally available
-window.handleImageError = handleImageError;
-
-/**
- * Render register button based on tournament state
- */
-function renderRegisterButton(tournament, isRegistered, isFull) {
-    if (isRegistered) {
-        return `
-            <button class="register-btn registered" data-action="enter" data-tournament-id="${tournament.id}">
-                🎮 Enter Tournament
-            </button>
-        `;
-    }
-    
-    if (isFull) {
-        return `<button class="register-btn" disabled>Tournament Full</button>`;
-    }
-    
-    if (tournament.status !== 'upcoming') {
-        return `<button class="register-btn" disabled>Registration Closed</button>`;
-    }
-    
-    // Check user balance
-    if (state.currentUser) {
-        const totalBalance = state.currentUser.wallet_balance + state.currentUser.winnings_balance;
-        if (totalBalance < tournament.entry_fee) {
-            return `<button class="register-btn" disabled>Insufficient Balance</button>`;
-        }
-    }
-    
-    const buttonText = (tournament.team_mode === 'solo' || !tournament.team_mode) ? 'Register Now' : 'Create Team';
-    const action = (tournament.team_mode === 'solo' || !tournament.team_mode) ? 'register' : 'create-team';
-    
-    return `
-        <button class="register-btn" 
-                data-action="${action}" 
-                data-tournament-id="${tournament.id}"
-                data-team-mode="${tournament.team_mode || 'solo'}"
-                data-entry-fee="${tournament.entry_fee}">
-            ${buttonText}
-        </button>
-    `;
-}
-
-/**
- * Handle tournament interactions (register, enter, etc.)
- */
-async function handleTournamentInteraction(event) {
-    const button = event.target.closest('.register-btn');
-    if (!button) return;
-    
-    event.preventDefault();
-    
-    const action = button.getAttribute('data-action');
-    const tournamentId = parseInt(button.getAttribute('data-tournament-id'));
-    const teamMode = button.getAttribute('data-team-mode') || 'solo';
-    const entryFee = parseFloat(button.getAttribute('data-entry-fee') || 0);
-    
-    console.log('Tournament interaction:', { action, tournamentId, teamMode, entryFee });
-    
-    switch (action) {
-        case 'register':
-            await handleRegister(tournamentId, entryFee, button);
-            break;
-        case 'create-team':
-            handleCreateTeam(tournamentId);
-            break;
-        case 'enter':
-            handleEnterTournament(tournamentId);
-            break;
-    }
-}
-
-/**
- * Handle tournament registration
- */
-async function handleRegister(tournamentId, entryFee, button) {
-    if (!confirm(`Register for this tournament? Entry fee: ₹${entryFee}`)) {
-        return;
-    }
-    
-    const originalText = button.innerHTML;
-    
-    try {
-        // Update button state
-        button.disabled = true;
-        button.innerHTML = '<span class="loading-spinner"></span>Registering...';
-        
-        const response = await fetch('/api/tournaments/register', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ tournamentId })
-        });
-        
-        const result = await response.json();
-        
-        if (response.ok) {
-            showMessage('Registration successful!', 'success');
-            
-            // Reload data
-            await Promise.all([
-                loadTournaments(),
-                loadUserInfo()
-            ]);
-            
-        } else {
-            throw new Error(result.error || 'Registration failed');
-        }
-        
-    } catch (error) {
-        console.error('Registration error:', error);
-        showMessage(error.message || 'Registration failed', 'error');
-        
-        // Restore button
-        button.disabled = false;
-        button.innerHTML = originalText;
-    }
-}
-
-/**
- * Handle team creation (placeholder for now)
- */
-function handleCreateTeam(tournamentId) {
-    // For now, just register as solo
-    // You can implement team modal here later
-    const tournament = state.allTournaments.find(t => t.id === tournamentId);
-    if (tournament) {
-        const button = document.querySelector(`[data-tournament-id="${tournamentId}"]`);
-        handleRegister(tournamentId, tournament.entry_fee, button);
-    }
-}
-
-/**
- * Handle entering tournament
- */
-function handleEnterTournament(tournamentId) {
-    window.location.href = `/tournament/${tournamentId}`;
 }
 
 /**
@@ -565,18 +426,23 @@ function handleEnterTournament(tournamentId) {
  */
 async function handleLogout() {
     try {
-        const response = await fetch('/api/logout', {
-            method: 'POST'
-        });
-        
+        const response = await fetch('/api/logout', { method: 'POST' });
         const result = await response.json();
-        
+
         if (result.success) {
             window.location.href = '/login';
         }
     } catch (error) {
         console.error('Logout error:', error);
     }
+}
+
+/**
+ * Show tournament details modal (optional feature)
+ */
+function showTournamentDetails(tournament) {
+    // Implementation for detailed view modal
+    console.log('Tournament details:', tournament);
 }
 
 /**
