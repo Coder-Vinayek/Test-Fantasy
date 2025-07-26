@@ -1388,11 +1388,8 @@ app.get('/api/tournament/:id/lobby', requireAuth, async (req, res) => {
     const tournamentId = req.params.id;
     
     try {
-        // Your existing code continues here...
-        
         // FIXED: Check if user is admin first, if yes, skip registration check
         if (!req.session.isAdmin) {
-            console.log('🔍 Non-admin user - checking registration...');
             // Only check registration for non-admin users
             const { data: registration, error: regError } = await supabase
                 .from('tournament_registrations')
@@ -1402,15 +1399,37 @@ app.get('/api/tournament/:id/lobby', requireAuth, async (req, res) => {
                 .single();
 
             if (regError || !registration) {
-                console.log('❌ Registration check failed:', regError || 'No registration found');
                 return res.status(403).json({ error: 'You are not registered for this tournament' });
             }
-            console.log('✅ Registration check passed');
         } else {
             console.log(`✅ Admin access granted to tournament ${tournamentId} for user ${req.session.userId}`);
         }
 
-        // Rest of your existing code...
+        // Get tournament details
+        const { data: tournament, error: tournamentError } = await supabase
+            .from('tournaments')
+            .select('*')
+            .eq('id', tournamentId)
+            .single();
+
+        if (tournamentError || !tournament) {
+            return res.status(404).json({ error: 'Tournament not found' });
+        }
+
+        // Get match details if exists
+        const { data: matchDetails, error: matchError } = await supabase
+            .from('tournament_match_details')
+            .select('*')
+            .eq('tournament_id', tournamentId)
+            .single();
+
+        // Don't fail if no match details exist
+        res.json({
+            tournament: tournament,
+            matchDetails: matchDetails || null,
+            onlineCount: tournament.current_participants // Simplified for now
+        });
+
     } catch (error) {
         console.error('Get tournament lobby error:', error);
         return res.status(500).json({ error: 'Failed to get tournament data' });
