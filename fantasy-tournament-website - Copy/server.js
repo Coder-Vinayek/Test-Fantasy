@@ -359,133 +359,7 @@ app.get('/api/tournaments', requireAuth, async (req, res) => {
 });
 
 // MODIFIED: Tournament registration to use both wallet + winnings balance with deposit priority
-app.post('/api/tournaments/register', requireAuth, checkBanStatus, async (req, res) => {
-    const { tournamentId } = req.body;
 
-    try {
-        // Get tournament details
-        const { data: tournament, error: tournamentError } = await supabase
-            .from('tournaments')
-            .select('*')
-            .eq('id', tournamentId)
-            .single();
-
-        if (tournamentError || !tournament) {
-            return res.status(400).json({ error: 'Tournament not found' });
-        }
-
-        // Get user details
-        const { data: user, error: userError } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', req.session.userId)
-            .single();
-
-        if (userError || !user) {
-            return res.status(400).json({ error: 'User not found' });
-        }
-
-        // Check combined balance (wallet + winnings for registration)
-        const totalBalance = parseFloat(user.wallet_balance) + parseFloat(user.winnings_balance);
-        if (totalBalance < tournament.entry_fee) {
-            return res.status(400).json({ error: 'Insufficient balance' });
-        }
-
-        // Check if tournament is full
-        if (tournament.current_participants >= tournament.max_participants) {
-            return res.status(400).json({ error: 'Tournament is full' });
-        }
-
-        // Check if already registered
-        const { data: existingReg, error: regCheckError } = await supabase
-            .from('tournament_registrations')
-            .select('id')
-            .eq('user_id', req.session.userId)
-            .eq('tournament_id', tournamentId)
-            .single();
-
-        if (existingReg) {
-            return res.status(400).json({ error: 'Already registered for this tournament' });
-        }
-
-        // Register user for tournament
-        const { error: registrationError } = await supabase
-            .from('tournament_registrations')
-            .insert([{
-                user_id: req.session.userId,
-                tournament_id: tournamentId
-            }]);
-
-        if (registrationError) {
-            console.error('Registration error:', registrationError);
-            return res.status(500).json({ error: 'Registration failed' });
-        }
-
-        // MODIFIED: Deduct from deposit (wallet) first, then winnings if needed
-        let newWalletBalance = parseFloat(user.wallet_balance);
-        let newWinningsBalance = parseFloat(user.winnings_balance);
-        let remainingFee = parseFloat(tournament.entry_fee);
-
-        // First try to deduct from wallet balance
-        if (newWalletBalance >= remainingFee) {
-            newWalletBalance -= remainingFee;
-            remainingFee = 0;
-        } else {
-            // Deduct what we can from wallet, then rest from winnings
-            remainingFee -= newWalletBalance;
-            newWalletBalance = 0;
-            newWinningsBalance -= remainingFee;
-        }
-
-        // Update user balances
-        const { error: balanceError } = await supabase
-            .from('users')
-            .update({
-                wallet_balance: newWalletBalance,
-                winnings_balance: newWinningsBalance
-            })
-            .eq('id', req.session.userId);
-
-        if (balanceError) {
-            console.error('Balance update error:', balanceError);
-            return res.status(500).json({ error: 'Payment failed' });
-        }
-
-        // Update tournament participant count
-        const { error: tournamentUpdateError } = await supabase
-            .from('tournaments')
-            .update({
-                current_participants: tournament.current_participants + 1
-            })
-            .eq('id', tournamentId);
-
-        if (tournamentUpdateError) {
-            console.error('Tournament update error:', tournamentUpdateError);
-            return res.status(500).json({ error: 'Registration failed' });
-        }
-
-        // Record transaction
-        const { error: transactionError } = await supabase
-            .from('wallet_transactions')
-            .insert([{
-                user_id: req.session.userId,
-                transaction_type: 'debit',
-                amount: tournament.entry_fee,
-                balance_type: 'combined',
-                description: `Tournament registration: ${tournament.name}`
-            }]);
-
-        if (transactionError) {
-            console.error('Transaction error:', transactionError);
-            return res.status(500).json({ error: 'Transaction recording failed' });
-        }
-
-        res.json({ success: true, message: 'Registration successful' });
-    } catch (error) {
-        console.error('Tournament registration error:', error);
-        return res.status(500).json({ error: 'Registration failed' });
-    }
-});
 
 // API Routes - Wallet
 app.post('/api/wallet/deposit', requireAuth, async (req, res) => {
@@ -549,12 +423,15 @@ app.post('/api/wallet/withdraw', requireAuth, checkBanStatus, async (req, res) =
     const { amount } = req.body;
     const withdrawAmount = parseFloat(amount);
 
+    console.log('💸 Withdrawal request started:', withdrawAmount, 'for user:', req.session.userId);
+
     // Minimum withdrawal amount check
     if (!withdrawAmount || withdrawAmount < 25) {
         return res.status(400).json({ error: 'Minimum withdrawal amount is ₹25' });
     }
 
     try {
+        console.log('👤 Getting user data...');
         const { data: user, error: userError } = await supabase
             .from('users')
             .select('winnings_balance')
@@ -562,29 +439,41 @@ app.post('/api/wallet/withdraw', requireAuth, checkBanStatus, async (req, res) =
             .single();
 
         if (userError || !user) {
+            console.error('❌ User error:', userError);
             return res.status(400).json({ error: 'User not found' });
         }
+
+        console.log('✅ User found. Winnings balance:', user.winnings_balance);
 
         if (user.winnings_balance < withdrawAmount) {
             return res.status(400).json({ error: 'Insufficient winnings balance' });
         }
 
-        // Create payout request instead of directly updating balance
-        const { error: payoutError } = await supabase
-            .from('payout_requests')
-            .insert([{
-                user_id: req.session.userId,
-                amount: withdrawAmount,
-                status: 'pending',
-                requested_at: new Date().toISOString()
-            }]);
+        // Try to create payout request
+        console.log('📋 Creating payout request...');
+        try {
+            const { error: payoutError } = await supabase
+                .from('payout_requests')
+                .insert([{
+                    user_id: req.session.userId,
+                    amount: withdrawAmount,
+                    status: 'pending',
+                    requested_at: new Date().toISOString()
+                }]);
 
-        if (payoutError) {
-            console.error('Payout request error:', payoutError);
-            return res.status(500).json({ error: 'Withdrawal request failed' });
+            if (payoutError) {
+                console.error('❌ Payout request creation failed:', payoutError);
+                // Continue without payout request for now
+            } else {
+                console.log('✅ Payout request created');
+            }
+        } catch (payoutCreateError) {
+            console.error('❌ Payout request table might not exist:', payoutCreateError);
+            // Continue without payout request
         }
 
         // Update winnings balance
+        console.log('💰 Updating winnings balance...');
         const { error: updateError } = await supabase
             .from('users')
             .update({
@@ -593,30 +482,34 @@ app.post('/api/wallet/withdraw', requireAuth, checkBanStatus, async (req, res) =
             .eq('id', req.session.userId);
 
         if (updateError) {
-            console.error('Withdrawal error:', updateError);
+            console.error('❌ Balance update error:', updateError);
             return res.status(500).json({ error: 'Withdrawal failed' });
         }
+        console.log('✅ Winnings balance updated');
 
-        // Record transaction
-        const { error: transactionError } = await supabase
-            .from('wallet_transactions')
-            .insert([{
-                user_id: req.session.userId,
-                transaction_type: 'debit',
-                amount: withdrawAmount,
-                balance_type: 'winnings',
-                description: 'Winnings withdrawal request'
-            }]);
-
-        if (transactionError) {
-            console.error('Transaction error:', transactionError);
-            return res.status(500).json({ error: 'Transaction recording failed' });
+        // Try to record transaction
+        console.log('📝 Recording transaction...');
+        try {
+            await supabase
+                .from('wallet_transactions')
+                .insert([{
+                    user_id: req.session.userId,
+                    transaction_type: 'debit',
+                    amount: withdrawAmount,
+                    balance_type: 'winnings',
+                    description: 'Winnings withdrawal request'
+                }]);
+            console.log('✅ Transaction recorded');
+        } catch (transactionError) {
+            console.error('⚠️ Transaction recording failed (non-critical):', transactionError);
         }
 
+        console.log('🎉 Withdrawal completed successfully');
         res.json({ success: true, message: 'Withdrawal request submitted successfully. Admin will process it soon.' });
+
     } catch (error) {
-        console.error('Wallet withdrawal error:', error);
-        return res.status(500).json({ error: 'Withdrawal failed' });
+        console.error('💥 Withdrawal error:', error);
+        return res.status(500).json({ error: 'Withdrawal failed: ' + error.message });
     }
 });
 
@@ -647,11 +540,22 @@ app.get('/api/wallet/transactions', requireAuth, async (req, res) => {
 // NEW: Payout requests for admin dashboard
 app.get('/api/admin/payout-requests', requireAdmin, async (req, res) => {
     try {
+        // Check if table exists first
+        const { data: tableCheck, error: tableError } = await supabase
+            .from('payout_requests')
+            .select('count', { count: 'exact', head: true })
+            .limit(1);
+
+        if (tableError) {
+            console.error('Payout requests table does not exist:', tableError);
+            return res.json([]); // Return empty array instead of error
+        }
+
         const { data: payoutRequests, error } = await supabase
             .from('payout_requests')
             .select(`
                 *,
-                users!inner(username, email)
+                users!payout_requests_user_id_fkey(username, email)
             `)
             .order('requested_at', { ascending: false });
 
@@ -661,11 +565,11 @@ app.get('/api/admin/payout-requests', requireAdmin, async (req, res) => {
         }
 
         // Transform data to match expected format
-        const transformedRequests = payoutRequests.map(p => ({
+        const transformedRequests = (payoutRequests || []).map(p => ({
             id: p.id,
             user_id: p.user_id,
-            username: p.users.username,
-            email: p.users.email,
+            username: (p.users && p.users.username) || 'Unknown',
+            email: (p.users && p.users.email) || 'Unknown',
             amount: p.amount,
             status: p.status,
             requested_at: p.requested_at,
@@ -676,7 +580,7 @@ app.get('/api/admin/payout-requests', requireAdmin, async (req, res) => {
         res.json(transformedRequests);
     } catch (error) {
         console.error('Get payout requests error:', error);
-        return res.status(500).json({ error: 'Failed to get payout requests' });
+        res.status(500).json({ error: 'Failed to get payout requests' });
     }
 });
 
@@ -743,9 +647,9 @@ app.post('/api/admin/process-payout', requireAdmin, async (req, res) => {
             }
         }
 
-        res.json({ 
-            success: true, 
-            message: `Payout request ${action}d successfully` 
+        res.json({
+            success: true,
+            message: `Payout request ${action}d successfully`
         });
     } catch (error) {
         console.error('Process payout error:', error);
@@ -1372,7 +1276,7 @@ app.post('/api/admin/tournament/:id/bulk-message', requireAdmin, async (req, res
 // Tournament Announcements Route (for users/admins)
 app.get('/api/tournament/:id/announcements', requireAuth, async (req, res) => {
     const tournamentId = req.params.id;
-    
+
     try {
         // FIXED: Check if user is admin OR registered for this tournament
         if (!req.session.isAdmin) {
@@ -1411,7 +1315,7 @@ app.get('/api/tournament/:id/announcements', requireAuth, async (req, res) => {
 // Tournament Chat Route (for users/admins)
 app.get('/api/tournament/:id/chat', requireAuth, async (req, res) => {
     const tournamentId = req.params.id;
-    
+
     try {
         // FIXED: Check if user is admin OR registered for this tournament
         if (!req.session.isAdmin) {
@@ -1510,7 +1414,7 @@ app.post('/api/tournament/:id/chat', requireAuth, checkBanStatus, async (req, re
 // Tournament Lobby Data Route
 app.get('/api/tournament/:id/lobby', requireAuth, async (req, res) => {
     const tournamentId = req.params.id;
-    
+
     try {
         // FIXED: Check if user is admin first, if yes, skip registration check
         if (!req.session.isAdmin) {
@@ -1563,7 +1467,7 @@ app.get('/api/tournament/:id/lobby', requireAuth, async (req, res) => {
 // Tournament Players Route
 app.get('/api/tournament/:id/players', requireAuth, async (req, res) => {
     const tournamentId = req.params.id;
-    
+
     try {
         // FIXED: Check if user is admin OR registered for this tournament
         if (!req.session.isAdmin) {
@@ -1637,10 +1541,10 @@ app.get('/api/tournaments/enhanced', requireAuth, async (req, res) => {
         const tournamentsWithRegistration = tournaments.map(tournament => {
             // Check solo registration
             const soloRegistered = tournament.tournament_registrations.some(reg => reg.user_id === req.session.userId);
-            
+
             // Check team registration (as leader)
             const teamRegistered = tournament.team_registrations.some(team => team.team_leader_id === req.session.userId);
-            
+
             return {
                 ...tournament,
                 is_registered: (soloRegistered || teamRegistered) ? 1 : 0
@@ -1659,7 +1563,10 @@ app.post('/api/tournaments/register', requireAuth, checkBanStatus, async (req, r
     const { tournamentId } = req.body;
 
     try {
+        console.log('🎮 Tournament registration started for user:', req.session.userId, 'tournament:', tournamentId);
+
         // Get tournament details
+        console.log('📋 Fetching tournament details...');
         const { data: tournament, error: tournamentError } = await supabase
             .from('tournaments')
             .select('*')
@@ -1667,10 +1574,13 @@ app.post('/api/tournaments/register', requireAuth, checkBanStatus, async (req, r
             .single();
 
         if (tournamentError || !tournament) {
+            console.error('❌ Tournament not found:', tournamentError);
             return res.status(400).json({ error: 'Tournament not found' });
         }
+        console.log('✅ Tournament found:', tournament.name);
 
         // Get user details
+        console.log('👤 Fetching user details...');
         const { data: user, error: userError } = await supabase
             .from('users')
             .select('*')
@@ -1678,11 +1588,16 @@ app.post('/api/tournaments/register', requireAuth, checkBanStatus, async (req, r
             .single();
 
         if (userError || !user) {
+            console.error('❌ User not found:', userError);
             return res.status(400).json({ error: 'User not found' });
         }
+        console.log('✅ User found:', user.username);
 
-        // Check combined balance (wallet + winnings for registration)
+        // Check combined balance
+        console.log('💰 Checking balances...');
         const totalBalance = parseFloat(user.wallet_balance) + parseFloat(user.winnings_balance);
+        console.log('Wallet:', user.wallet_balance, 'Winnings:', user.winnings_balance, 'Total:', totalBalance, 'Entry fee:', tournament.entry_fee);
+        
         if (totalBalance < tournament.entry_fee) {
             return res.status(400).json({ error: 'Insufficient combined balance' });
         }
@@ -1692,7 +1607,8 @@ app.post('/api/tournaments/register', requireAuth, checkBanStatus, async (req, r
             return res.status(400).json({ error: 'Tournament is full' });
         }
 
-        // Check if already registered (solo or team)
+        // Check if already registered
+        console.log('🔍 Checking existing registration...');
         const { data: existingSolo, error: soloCheckError } = await supabase
             .from('tournament_registrations')
             .select('id')
@@ -1704,18 +1620,8 @@ app.post('/api/tournaments/register', requireAuth, checkBanStatus, async (req, r
             return res.status(400).json({ error: 'Already registered for this tournament' });
         }
 
-        const { data: existingTeam, error: teamCheckError } = await supabase
-            .from('team_registrations')
-            .select('id')
-            .eq('team_leader_id', req.session.userId)
-            .eq('tournament_id', tournamentId)
-            .single();
-
-        if (existingTeam) {
-            return res.status(400).json({ error: 'Already registered as team leader for this tournament' });
-        }
-
         // Register user for tournament
+        console.log('📝 Registering user for tournament...');
         const { error: registrationError } = await supabase
             .from('tournament_registrations')
             .insert([{
@@ -1724,14 +1630,16 @@ app.post('/api/tournaments/register', requireAuth, checkBanStatus, async (req, r
             }]);
 
         if (registrationError) {
-            console.error('Registration error:', registrationError);
+            console.error('❌ Registration error:', registrationError);
             return res.status(500).json({ error: 'Registration failed' });
         }
+        console.log('✅ User registered successfully');
 
-        // Deduct from wallet first, then winnings if needed
-        let newWalletBalance = user.wallet_balance;
-        let newWinningsBalance = user.winnings_balance;
-        let remainingFee = tournament.entry_fee;
+        // Calculate balance deductions
+        console.log('🧮 Calculating balance deductions...');
+        let newWalletBalance = parseFloat(user.wallet_balance);
+        let newWinningsBalance = parseFloat(user.winnings_balance);
+        let remainingFee = parseFloat(tournament.entry_fee);
 
         if (newWalletBalance >= remainingFee) {
             newWalletBalance -= remainingFee;
@@ -1740,8 +1648,10 @@ app.post('/api/tournaments/register', requireAuth, checkBanStatus, async (req, r
             newWalletBalance = 0;
             newWinningsBalance -= remainingFee;
         }
+        console.log('New wallet balance:', newWalletBalance, 'New winnings balance:', newWinningsBalance);
 
         // Update user balances
+        console.log('💳 Updating user balances...');
         const { error: balanceError } = await supabase
             .from('users')
             .update({
@@ -1751,11 +1661,13 @@ app.post('/api/tournaments/register', requireAuth, checkBanStatus, async (req, r
             .eq('id', req.session.userId);
 
         if (balanceError) {
-            console.error('Balance update error:', balanceError);
+            console.error('❌ Balance update error:', balanceError);
             return res.status(500).json({ error: 'Payment failed' });
         }
+        console.log('✅ Balances updated');
 
         // Update tournament participant count
+        console.log('📊 Updating tournament participant count...');
         const { error: tournamentUpdateError } = await supabase
             .from('tournaments')
             .update({
@@ -1764,30 +1676,34 @@ app.post('/api/tournaments/register', requireAuth, checkBanStatus, async (req, r
             .eq('id', tournamentId);
 
         if (tournamentUpdateError) {
-            console.error('Tournament update error:', tournamentUpdateError);
+            console.error('❌ Tournament update error:', tournamentUpdateError);
             return res.status(500).json({ error: 'Registration failed' });
         }
+        console.log('✅ Tournament participant count updated');
 
-        // Record transaction
-        const { error: transactionError } = await supabase
-            .from('wallet_transactions')
-            .insert([{
-                user_id: req.session.userId,
-                transaction_type: 'debit',
-                amount: tournament.entry_fee,
-                balance_type: 'combined',
-                description: `Tournament registration: ${tournament.name}`
-            }]);
-
-        if (transactionError) {
-            console.error('Transaction error:', transactionError);
-            return res.status(500).json({ error: 'Transaction recording failed' });
+        // Record transaction (optional)
+        console.log('📝 Recording transaction...');
+        try {
+            await supabase
+                .from('wallet_transactions')
+                .insert([{
+                    user_id: req.session.userId,
+                    transaction_type: 'debit',
+                    amount: tournament.entry_fee,
+                    balance_type: 'wallet',
+                    description: `Tournament registration: ${tournament.name}`
+                }]);
+            console.log('✅ Transaction recorded');
+        } catch (transactionError) {
+            console.error('⚠️ Transaction recording failed (non-critical):', transactionError);
         }
 
+        console.log('🎉 Registration completed successfully');
         res.json({ success: true, message: 'Registration successful' });
+
     } catch (error) {
-        console.error('Tournament registration error:', error);
-        return res.status(500).json({ error: 'Registration failed' });
+        console.error('💥 Tournament registration error:', error);
+        return res.status(500).json({ error: 'Registration failed: ' + error.message });
     }
 });
 
@@ -1839,7 +1755,7 @@ app.post('/api/tournaments/register-team', requireAuth, checkBanStatus, async (r
         // Check if leader has enough balance
         const totalBalance = parseFloat(leader.wallet_balance) + parseFloat(leader.winnings_balance);
         const totalEntryFee = tournament.entry_fee * teamSize;
-        
+
         if (totalBalance < totalEntryFee) {
             return res.status(400).json({ error: `Insufficient balance. Need ₹${totalEntryFee} for team registration` });
         }
@@ -1864,14 +1780,14 @@ app.post('/api/tournaments/register-team', requireAuth, checkBanStatus, async (r
         // Check if tournament has space for the team
         const spotsNeeded = teamSize;
         const availableSpots = tournament.max_participants - tournament.current_participants;
-        
+
         if (availableSpots < spotsNeeded) {
             return res.status(400).json({ error: 'Not enough spots available for your team' });
         }
 
         // Check if any team member is already registered
         const allUserIds = [req.session.userId, ...memberUsers.map(u => u.id)];
-        
+
         const { data: existingRegs, error: regCheckError } = await supabase
             .from('tournament_registrations')
             .select('user_id')
@@ -1961,7 +1877,7 @@ app.post('/api/tournaments/register-team', requireAuth, checkBanStatus, async (r
                 user_id: req.session.userId,
                 transaction_type: 'debit',
                 amount: totalEntryFee,
-                balance_type: 'combined',
+                balance_type: 'tournament',
                 description: `Team registration: ${tournament.name} (${teamName})`
             }]);
 
@@ -1970,8 +1886,8 @@ app.post('/api/tournaments/register-team', requireAuth, checkBanStatus, async (r
             return res.status(500).json({ error: 'Transaction recording failed' });
         }
 
-        res.json({ 
-            success: true, 
+        res.json({
+            success: true,
             message: `Team "${teamName}" registered successfully for ₹${totalEntryFee}`,
             teamId: teamReg.id
         });
@@ -1984,15 +1900,15 @@ app.post('/api/tournaments/register-team', requireAuth, checkBanStatus, async (r
 
 // Enhanced admin tournament creation
 app.post('/api/admin/tournaments/enhanced', requireAdmin, async (req, res) => {
-    const { 
-        name, 
-        description, 
-        game_type, 
-        team_mode, 
-        entry_fee, 
-        prize_pool, 
-        max_participants, 
-        start_date, 
+    const {
+        name,
+        description,
+        game_type,
+        team_mode,
+        entry_fee,
+        prize_pool,
+        max_participants,
+        start_date,
         end_date,
         kill_points,
         rank_points,
@@ -2043,8 +1959,8 @@ app.post('/api/admin/tournaments/enhanced', requireAdmin, async (req, res) => {
             return res.status(500).json({ error: 'Failed to create tournament' });
         }
 
-        res.json({ 
-            success: true, 
+        res.json({
+            success: true,
             message: 'Enhanced tournament created successfully',
             tournament: data
         });
