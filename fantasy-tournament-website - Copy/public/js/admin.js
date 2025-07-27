@@ -13,6 +13,24 @@ let isCreatingTournament = false;
 // NEW: Payout System Variables
 let currentPayoutId = null;
 
+window.showMessage = function(message, type) {
+    const messageDiv = document.getElementById('message');
+    if (!messageDiv) {
+        // Fallback to alert if message div doesn't exist
+        alert(message);
+        return;
+    }
+
+    messageDiv.textContent = message;
+    messageDiv.className = `message ${type}`;
+    messageDiv.style.display = 'block';
+
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+        messageDiv.style.display = 'none';
+    }, 5000);
+};
+
 document.addEventListener('DOMContentLoaded', function () {
     const usernameDisplay = document.getElementById('username-display');
     const logoutBtn = document.getElementById('logoutBtn');
@@ -209,8 +227,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             // Popular tournament
-            const popularTournament = analytics.popularTournament;
-            document.getElementById('popularTournamentName').textContent = popularTournament.name || 'No tournaments';
+            const popularTournament = analytics.popularTournament || { name: 'No tournaments', current_participants: 0, max_participants: 0 };
             document.getElementById('popularTournamentStats').textContent =
                 `${popularTournament.current_participants || 0}/${popularTournament.max_participants || 0} participants`;
 
@@ -393,56 +410,89 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Global function for processing payouts
-    window.processPayout = async function(action) {
-        if (!currentPayoutId || !['approve', 'reject'].includes(action)) {
-            showMessage('Invalid payout action', 'error');
-            return;
-        }
-        
-        const adminNotes = document.getElementById('adminNotes').value;
-        
-        try {
-            const response = await adminFetch('/api/admin/process-payout', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    payoutId: currentPayoutId,
-                    action: action,
-                    adminNotes: adminNotes
-                })
-            });
-            
-            if (!response) return;
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                showMessage(`Payout request ${action}d successfully`, 'success');
-                closePayoutModal();
-                loadPayouts(); // Refresh payout list
-                loadAnalytics(); // Update analytics
-            } else {
-                showMessage(result.error || 'Failed to process payout', 'error');
-            }
-            
-        } catch (error) {
-            console.error('Error processing payout:', error);
-            showMessage('Network error. Please try again.', 'error');
-        }
-    };
+    // Make payout functions globally available
+window.openPayoutModal = function(payoutId, username, amount, email) {
+    const modal = document.getElementById('payoutModal');
+    const payoutDetails = document.getElementById('payoutDetails');
+    const payoutIdInput = document.getElementById('payoutId');
+    
+    if (payoutDetails) {
+        payoutDetails.innerHTML = `
+            <div class="payout-info">
+                <p><strong>User:</strong> ${username}</p>
+                <p><strong>Email:</strong> ${email}</p>
+                <p><strong>Amount:</strong> ₹${parseFloat(amount).toFixed(2)}</p>
+            </div>
+        `;
+    }
+    
+    if (payoutIdInput) {
+        payoutIdInput.value = payoutId;
+    }
+    
+    if (modal) {
+        modal.style.display = 'block';
+    }
+    
+    // Store current payout ID
+    window.currentPayoutId = payoutId;
+};
 
-    // Global function for closing payout modal
-    window.closePayoutModal = function() {
-        const modal = document.getElementById('payoutModal');
-        if (modal) {
-            modal.style.display = 'none';
+window.closePayoutModal = function() {
+    const modal = document.getElementById('payoutModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    window.currentPayoutId = null;
+    const adminNotesField = document.getElementById('adminNotes');
+    if (adminNotesField) {
+        adminNotesField.value = '';
+    }
+};
+
+window.processPayout = async function(action) {
+    if (!window.currentPayoutId || !['approve', 'reject'].includes(action)) {
+        alert('Invalid payout action');
+        return;
+    }
+    
+    const adminNotes = document.getElementById('adminNotes')?.value || '';
+    
+    try {
+        const response = await fetch('/api/admin/process-payout', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                payoutId: window.currentPayoutId,
+                action: action,
+                adminNotes: adminNotes
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
         }
-        currentPayoutId = null;
-        document.getElementById('adminNotes').value = '';
-    };
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(`Payout request ${action}d successfully`);
+            window.closePayoutModal();
+            // Reload payouts list
+            if (typeof loadPayouts === 'function') {
+                loadPayouts();
+            }
+        } else {
+            alert(result.error || 'Failed to process payout');
+        }
+        
+    } catch (error) {
+        console.error('Error processing payout:', error);
+        alert('Network error. Please try again.');
+    }
+};
 
     // TOURNAMENT FUNCTIONS
     async function loadTournaments() {
