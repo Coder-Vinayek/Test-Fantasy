@@ -3137,18 +3137,6 @@ body {
     margin-bottom: 0.5rem;
 }
 
-.deposit-card .balance-amount {
-    color: #4CAF50;
-}
-
-.winnings-card .balance-amount {
-    color: #FF9800;
-}
-
-.total-card .balance-amount {
-    color: #2196F3;
-}
-
 .balance-description {
     color: #666;
     font-size: 0.9rem;
