@@ -103,7 +103,7 @@ async function checkBanStatus(req, res, next) {
                     banned_by: null
                 })
                 .eq('id', req.session.userId);
-            
+
             next(); // Continue - ban has expired
         } else if (user.ban_status === 'temp_banned' || user.ban_status === 'banned') {
             return res.status(403).json({
@@ -163,7 +163,7 @@ app.post('/api/register', async (req, res) => {
 
     try {
         const hashedPassword = bcrypt.hashSync(password, 10);
-        
+
         const { data, error } = await supabase
             .from('users')
             .insert([{
@@ -321,7 +321,7 @@ app.get('/api/user', requireAuth, async (req, res) => {
 app.get('/api/tournaments', requireAuth, async (req, res) => {
     try {
         console.log('Loading tournaments for user:', req.session.userId);
-        
+
         const { data: tournaments, error } = await supabase
             .from('tournaments')
             .select(`
@@ -352,18 +352,18 @@ app.get('/api/tournaments', requireAuth, async (req, res) => {
 
         console.log('Processed tournaments:', tournamentsWithRegistration.length);
         res.json(tournamentsWithRegistration);
-
     } catch (error) {
         console.error('Get tournaments error:', error);
         res.status(500).json({ error: 'Failed to get tournaments' });
     }
 });
 
+// MODIFIED: Tournament registration to use both wallet + winnings balance with deposit priority
 app.post('/api/tournaments/register', requireAuth, checkBanStatus, async (req, res) => {
     const { tournamentId } = req.body;
 
     try {
-        // Start a transaction-like operation
+        // Get tournament details
         const { data: tournament, error: tournamentError } = await supabase
             .from('tournaments')
             .select('*')
@@ -374,6 +374,7 @@ app.post('/api/tournaments/register', requireAuth, checkBanStatus, async (req, r
             return res.status(400).json({ error: 'Tournament not found' });
         }
 
+        // Get user details
         const { data: user, error: userError } = await supabase
             .from('users')
             .select('*')
@@ -384,9 +385,10 @@ app.post('/api/tournaments/register', requireAuth, checkBanStatus, async (req, r
             return res.status(400).json({ error: 'User not found' });
         }
 
-        // Check if user has enough balance
-        if (user.wallet_balance < tournament.entry_fee) {
-            return res.status(400).json({ error: 'Insufficient wallet balance' });
+        // Check combined balance (wallet + winnings for registration)
+        const totalBalance = parseFloat(user.wallet_balance) + parseFloat(user.winnings_balance);
+        if (totalBalance < tournament.entry_fee) {
+            return res.status(400).json({ error: 'Insufficient balance' });
         }
 
         // Check if tournament is full
@@ -419,11 +421,28 @@ app.post('/api/tournaments/register', requireAuth, checkBanStatus, async (req, r
             return res.status(500).json({ error: 'Registration failed' });
         }
 
-        // Deduct entry fee from wallet
+        // MODIFIED: Deduct from deposit (wallet) first, then winnings if needed
+        let newWalletBalance = parseFloat(user.wallet_balance);
+        let newWinningsBalance = parseFloat(user.winnings_balance);
+        let remainingFee = parseFloat(tournament.entry_fee);
+
+        // First try to deduct from wallet balance
+        if (newWalletBalance >= remainingFee) {
+            newWalletBalance -= remainingFee;
+            remainingFee = 0;
+        } else {
+            // Deduct what we can from wallet, then rest from winnings
+            remainingFee -= newWalletBalance;
+            newWalletBalance = 0;
+            newWinningsBalance -= remainingFee;
+        }
+
+        // Update user balances
         const { error: balanceError } = await supabase
             .from('users')
             .update({
-                wallet_balance: user.wallet_balance - tournament.entry_fee
+                wallet_balance: newWalletBalance,
+                winnings_balance: newWinningsBalance
             })
             .eq('id', req.session.userId);
 
@@ -452,7 +471,7 @@ app.post('/api/tournaments/register', requireAuth, checkBanStatus, async (req, r
                 user_id: req.session.userId,
                 transaction_type: 'debit',
                 amount: tournament.entry_fee,
-                balance_type: 'wallet',
+                balance_type: 'combined',
                 description: `Tournament registration: ${tournament.name}`
             }]);
 
@@ -525,12 +544,14 @@ app.post('/api/wallet/deposit', requireAuth, async (req, res) => {
     }
 });
 
+// MODIFIED: Withdrawal system with minimum 25rs requirement and payout requests
 app.post('/api/wallet/withdraw', requireAuth, checkBanStatus, async (req, res) => {
     const { amount } = req.body;
     const withdrawAmount = parseFloat(amount);
 
-    if (!withdrawAmount || withdrawAmount <= 0) {
-        return res.status(400).json({ error: 'Invalid withdrawal amount' });
+    // Minimum withdrawal amount check
+    if (!withdrawAmount || withdrawAmount < 25) {
+        return res.status(400).json({ error: 'Minimum withdrawal amount is ₹25' });
     }
 
     try {
@@ -546,6 +567,21 @@ app.post('/api/wallet/withdraw', requireAuth, checkBanStatus, async (req, res) =
 
         if (user.winnings_balance < withdrawAmount) {
             return res.status(400).json({ error: 'Insufficient winnings balance' });
+        }
+
+        // Create payout request instead of directly updating balance
+        const { error: payoutError } = await supabase
+            .from('payout_requests')
+            .insert([{
+                user_id: req.session.userId,
+                amount: withdrawAmount,
+                status: 'pending',
+                requested_at: new Date().toISOString()
+            }]);
+
+        if (payoutError) {
+            console.error('Payout request error:', payoutError);
+            return res.status(500).json({ error: 'Withdrawal request failed' });
         }
 
         // Update winnings balance
@@ -569,7 +605,7 @@ app.post('/api/wallet/withdraw', requireAuth, checkBanStatus, async (req, res) =
                 transaction_type: 'debit',
                 amount: withdrawAmount,
                 balance_type: 'winnings',
-                description: 'Winnings withdrawal'
+                description: 'Winnings withdrawal request'
             }]);
 
         if (transactionError) {
@@ -577,7 +613,7 @@ app.post('/api/wallet/withdraw', requireAuth, checkBanStatus, async (req, res) =
             return res.status(500).json({ error: 'Transaction recording failed' });
         }
 
-        res.json({ success: true, message: 'Withdrawal successful' });
+        res.json({ success: true, message: 'Withdrawal request submitted successfully. Admin will process it soon.' });
     } catch (error) {
         console.error('Wallet withdrawal error:', error);
         return res.status(500).json({ error: 'Withdrawal failed' });
@@ -605,8 +641,117 @@ app.get('/api/wallet/transactions', requireAuth, async (req, res) => {
 });
 
 // ====================================
-// ADMIN API ROUTES - COMPLETE SET
+// ADMIN API ROUTES - WITH PAYOUT TAB
 // ====================================
+
+// NEW: Payout requests for admin dashboard
+app.get('/api/admin/payout-requests', requireAdmin, async (req, res) => {
+    try {
+        const { data: payoutRequests, error } = await supabase
+            .from('payout_requests')
+            .select(`
+                *,
+                users!inner(username, email)
+            `)
+            .order('requested_at', { ascending: false });
+
+        if (error) {
+            console.error('Get payout requests error:', error);
+            return res.status(500).json({ error: 'Failed to get payout requests' });
+        }
+
+        // Transform data to match expected format
+        const transformedRequests = payoutRequests.map(p => ({
+            id: p.id,
+            user_id: p.user_id,
+            username: p.users.username,
+            email: p.users.email,
+            amount: p.amount,
+            status: p.status,
+            requested_at: p.requested_at,
+            processed_at: p.processed_at,
+            admin_notes: p.admin_notes
+        }));
+
+        res.json(transformedRequests);
+    } catch (error) {
+        console.error('Get payout requests error:', error);
+        return res.status(500).json({ error: 'Failed to get payout requests' });
+    }
+});
+
+// NEW: Process payout request
+app.post('/api/admin/process-payout', requireAdmin, async (req, res) => {
+    const { payoutId, action, adminNotes } = req.body;
+
+    if (!payoutId || !action || !['approve', 'reject'].includes(action)) {
+        return res.status(400).json({ error: 'Invalid payout action' });
+    }
+
+    try {
+        const updateData = {
+            status: action === 'approve' ? 'approved' : 'rejected',
+            processed_at: new Date().toISOString(),
+            processed_by: req.session.userId,
+            admin_notes: adminNotes || null
+        };
+
+        const { error: updateError } = await supabase
+            .from('payout_requests')
+            .update(updateData)
+            .eq('id', payoutId);
+
+        if (updateError) {
+            console.error('Process payout error:', updateError);
+            return res.status(500).json({ error: 'Failed to process payout' });
+        }
+
+        // If rejected, refund the winnings balance
+        if (action === 'reject') {
+            const { data: payout, error: payoutError } = await supabase
+                .from('payout_requests')
+                .select('user_id, amount')
+                .eq('id', payoutId)
+                .single();
+
+            if (!payoutError && payout) {
+                const { data: user, error: userError } = await supabase
+                    .from('users')
+                    .select('winnings_balance')
+                    .eq('id', payout.user_id)
+                    .single();
+
+                if (!userError && user) {
+                    await supabase
+                        .from('users')
+                        .update({
+                            winnings_balance: user.winnings_balance + payout.amount
+                        })
+                        .eq('id', payout.user_id);
+
+                    // Record refund transaction
+                    await supabase
+                        .from('wallet_transactions')
+                        .insert([{
+                            user_id: payout.user_id,
+                            transaction_type: 'credit',
+                            amount: payout.amount,
+                            balance_type: 'winnings',
+                            description: 'Withdrawal request rejected - refund'
+                        }]);
+                }
+            }
+        }
+
+        res.json({ 
+            success: true, 
+            message: `Payout request ${action}d successfully` 
+        });
+    } catch (error) {
+        console.error('Process payout error:', error);
+        return res.status(500).json({ error: 'Failed to process payout' });
+    }
+});
 
 // Analytics API Route
 app.get('/api/admin/analytics', requireAdmin, async (req, res) => {
@@ -674,7 +819,7 @@ app.get('/api/admin/analytics', requireAdmin, async (req, res) => {
         // Recent users (last 30 days)
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        
+
         const { count: recentUsers, error: recentError } = await supabase
             .from('users')
             .select('*', { count: 'exact', head: true })
@@ -684,38 +829,14 @@ app.get('/api/admin/analytics', requireAdmin, async (req, res) => {
         if (recentError) throw recentError;
         analytics.recentUsers = recentUsers || 0;
 
-        // Most popular tournament
-        const { data: popularTournament, error: popularError } = await supabase
-            .from('tournaments')
-            .select('name, current_participants, max_participants')
-            .order('current_participants', { ascending: false })
-            .limit(1)
-            .single();
+        // Get pending payout requests count
+        const { count: pendingPayouts, error: payoutError } = await supabase
+            .from('payout_requests')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'pending');
 
-        if (popularError && popularError.code !== 'PGRST116') throw popularError;
-        analytics.popularTournament = popularTournament || { 
-            name: 'No tournaments', 
-            current_participants: 0, 
-            max_participants: 0 
-        };
-
-        // Tournament status distribution
-        const { data: tournaments, error: allTournError } = await supabase
-            .from('tournaments')
-            .select('status');
-        
-        if (!allTournError) {
-            const statusCounts = {};
-            tournaments.forEach(t => {
-                statusCounts[t.status] = (statusCounts[t.status] || 0) + 1;
-            });
-            analytics.tournamentStatus = Object.entries(statusCounts).map(([status, count]) => ({ status, count }));
-        } else {
-            analytics.tournamentStatus = [];
-        }
-
-        // Transaction trends (simplified)
-        analytics.transactionTrends = [];
+        if (payoutError) throw payoutError;
+        analytics.pendingPayouts = pendingPayouts || 0;
 
         res.json(analytics);
     } catch (error) {
@@ -743,6 +864,9 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
         return res.status(500).json({ error: 'Failed to get users' });
     }
 });
+
+// Rest of the existing admin routes remain unchanged...
+// (I'll continue with the remaining routes from your original server.js)
 
 // Admin Tournaments Routes
 app.get('/api/admin/tournaments', requireAdmin, async (req, res) => {
@@ -2008,7 +2132,7 @@ async function initializeServer() {
         }
 
         console.log('✅ Supabase connection established');
-        
+
         // Check if admin user exists
         const { data: adminUser, error: adminError } = await supabase
             .from('users')
@@ -2020,7 +2144,7 @@ async function initializeServer() {
             // No admin user found, create one
             console.log('🔧 Creating admin user...');
             const hashedPassword = bcrypt.hashSync('admin123', 10);
-            
+
             const { data: newAdmin, error: createError } = await supabase
                 .from('users')
                 .insert([{
@@ -2043,10 +2167,11 @@ async function initializeServer() {
 
         app.listen(PORT, () => {
             console.log(`🚀 Fantasy Tournament Server running on http://localhost:${PORT}`);
-            console.log('🗄️  Database: Supabase');
+            console.log('🗄️ Database: Supabase');
             console.log('👨‍💼 Admin credentials: username=admin, password=admin123');
             console.log('🔧 Change admin password after first login!');
         });
+
     } catch (error) {
         console.error('❌ Failed to initialize server:', error);
         process.exit(1);
