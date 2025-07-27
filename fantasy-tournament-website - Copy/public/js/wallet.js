@@ -390,27 +390,27 @@ document.addEventListener('DOMContentLoaded', function () {
             depositAmountInput.focus();
         }
     };
-
+    
     window.setWithdrawAmount = function(amount) {
         const withdrawAmountInput = document.getElementById('withdrawAmount');
         if (withdrawAmountInput) {
             // Check if amount is within limits
             if (amount > currentWinningsBalance) {
-                showMessage(`❌ You only have ₹${currentWinningsBalance.toFixed(2)} in winnings balance`, 'error');
+                alert(`You only have ₹${currentWinningsBalance.toFixed(2)} in winnings balance`);
                 return;
             }
             withdrawAmountInput.value = amount;
             withdrawAmountInput.focus();
         }
     };
-
+    
     window.setMaxWithdraw = function() {
         const withdrawAmountInput = document.getElementById('withdrawAmount');
         if (withdrawAmountInput && currentWinningsBalance >= 25) {
             withdrawAmountInput.value = currentWinningsBalance.toFixed(2);
             withdrawAmountInput.focus();
         } else if (currentWinningsBalance < 25) {
-            showMessage('❌ You need at least ₹25 in winnings balance to withdraw', 'error');
+            alert('You need at least ₹25 in winnings balance to withdraw');
         }
     };
 
