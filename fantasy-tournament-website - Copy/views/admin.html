@@ -15,18 +15,18 @@
             gap: 20px;
             margin-bottom: 20px;
         }
-        
+
         .form-group {
             display: flex;
             flex-direction: column;
         }
-        
+
         .form-group label {
             margin-bottom: 8px;
             font-weight: 600;
             color: #333;
         }
-        
+
         .form-group input,
         .form-group select,
         .form-group textarea {
@@ -36,7 +36,7 @@
             font-size: 14px;
             transition: border-color 0.3s ease;
         }
-        
+
         .form-group input:focus,
         .form-group select:focus,
         .form-group textarea:focus {
@@ -44,13 +44,13 @@
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
-        
+
         .form-group small {
             margin-top: 4px;
             color: #666;
             font-size: 12px;
         }
-        
+
         .tournament-preview {
             margin-top: 30px;
             padding: 20px;
@@ -58,7 +58,7 @@
             border-radius: 12px;
             border: 1px solid #e9ecef;
         }
-        
+
         .preview-card {
             background: white;
             border-radius: 12px;
@@ -66,19 +66,19 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             max-width: 320px;
         }
-        
+
         .preview-header {
             position: relative;
             height: 120px;
             background: linear-gradient(45deg, #667eea, #764ba2);
         }
-        
+
         .preview-header img {
             width: 100%;
             height: 100%;
             object-fit: cover;
         }
-        
+
         .preview-badges {
             position: absolute;
             top: 8px;
@@ -87,7 +87,7 @@
             display: flex;
             justify-content: space-between;
         }
-        
+
         .game-badge, .mode-badge {
             background: rgba(0, 0, 0, 0.7);
             color: white;
@@ -96,31 +96,52 @@
             font-size: 12px;
             font-weight: 600;
         }
-        
+
         .preview-content {
             padding: 16px;
         }
-        
+
         .preview-content h5 {
             margin: 0 0 12px 0;
             font-size: 16px;
             font-weight: 700;
         }
-        
+
         .preview-stats {
             display: flex;
             justify-content: space-between;
             font-size: 14px;
             color: #666;
         }
-        
+
+        /* NEW: Payout Tab Styles */
+        .payout-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #ff4444;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 0.7rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .tab-btn {
+            position: relative;
+        }
+
         @media (max-width: 768px) {
             .form-row {
                 grid-template-columns: 1fr;
                 gap: 16px;
             }
         }
-        </style>
+    </style>
 </head>
 
 <body>
@@ -150,6 +171,11 @@
                 <button class="tab-btn" data-tab="transactions">
                     Admin Actions
                 </button>
+                <!-- NEW: Payouts Tab -->
+                <button class="tab-btn" data-tab="payouts" id="payoutsTab">
+                    Payouts
+                    <span class="payout-badge" id="payoutBadge" style="display: none;">0</span>
+                </button>
                 <button class="tab-btn" data-tab="create-tournament">
                     Create Tournament
                 </button>
@@ -157,7 +183,7 @@
                     Manage Tournaments</button>
             </div>
 
-            <!-- Analytics Tab - NEW -->
+            <!-- Analytics Tab - UPDATED with Payout Count -->
             <div id="analyticsTab" class="tab-content active">
                 <h3 class="section-title">📊 Platform Analytics</h3>
 
@@ -192,6 +218,15 @@
                         <div class="metric-value">$<span id="totalProfit">0</span></div>
                         <div class="metric-change">
                             Withdrawals: $<span id="totalWithdrawals">0</span>
+                        </div>
+                    </div>
+
+                    <!-- NEW: Pending Payouts Card -->
+                    <div class="metric-card payout-card">
+                        <div class="metric-label">Pending Payouts</div>
+                        <div class="metric-value" id="pendingPayouts">0</div>
+                        <div class="metric-change">
+                            Requests awaiting approval
                         </div>
                     </div>
                 </div>
@@ -256,6 +291,17 @@
                 </div>
             </div>
 
+            <!-- NEW: Payouts Tab -->
+            <div id="payoutsTab" class="tab-content">
+                <h3>💳 Payout Requests Management</h3>
+                <p class="admin-info-text">
+                    📋 Manage withdrawal requests from users. Approve or reject pending payouts.
+                </p>
+                <div id="payoutsContainer" class="admin-table-container">
+                    <!-- Payout requests table will be loaded here -->
+                </div>
+            </div>
+
             <!-- Create Tournament Tab - NO INLINE CSS -->
             <div id="createTournamentTab" class="tab-content">
                 <div class="create-tournament-header">
@@ -266,7 +312,7 @@
                         Create tournaments for Free Fire, BGMI, Valorant, and CODM with solo/duo/squad modes.
                     </p>
                 </div>
-            
+
                 <form id="createTournamentForm" class="form admin-form">
                     <!-- Game Selection Row -->
                     <div class="form-row">
@@ -290,21 +336,21 @@
                             </select>
                         </div>
                     </div>
-            
+
                     <!-- Tournament Name and Entry Fee -->
                     <div class="form-row">
                         <div class="form-group">
                             <label for="tournamentName">🏆 Tournament Name:</label>
-                            <input type="text" id="tournamentName" name="name" 
+                            <input type="text" id="tournamentName" name="name"
                                    placeholder="e.g., Free Fire Solo Championship" required>
                         </div>
                         <div class="form-group">
                             <label for="entryFee">💰 Entry Fee (₹):</label>
-                            <input type="number" id="entryFee" name="entry_fee" min="1" step="0.01" 
+                            <input type="number" id="entryFee" name="entry_fee" min="1" step="0.01"
                                    placeholder="10.00" required>
                         </div>
                     </div>
-            
+
                     <!-- Prize Pool and Max Participants -->
                     <div class="form-row">
                         <div class="form-group">
@@ -314,11 +360,11 @@
                         </div>
                         <div class="form-group">
                             <label for="maxParticipants">👥 Max Participants:</label>
-                            <input type="number" id="maxParticipants" name="max_participants" min="2" 
+                            <input type="number" id="maxParticipants" name="max_participants" min="2"
                                    placeholder="50" required>
                         </div>
                     </div>
-            
+
                     <!-- Date and Time -->
                     <div class="form-row">
                         <div class="form-group">
@@ -330,12 +376,12 @@
                             <input type="datetime-local" id="endDate" name="end_date" required>
                         </div>
                     </div>
-            
+
                     <!-- Game Settings Row -->
                     <div class="form-row">
                         <div class="form-group">
                             <label for="killPoints">🎯 Kill Points:</label>
-                            <input type="number" id="killPoints" name="kill_points" min="1" max="10" 
+                            <input type="number" id="killPoints" name="kill_points" min="1" max="10"
                                    placeholder="1" value="1">
                             <small>Points per kill (1-10)</small>
                         </div>
@@ -349,16 +395,16 @@
                             </select>
                         </div>
                     </div>
-            
+
                     <!-- Placement Points Configuration -->
                     <div class="form-group">
                         <label for="rankPoints">🏆 Placement Points (JSON Format):</label>
-                        <textarea id="rankPoints" name="rank_points" rows="3" 
+                        <textarea id="rankPoints" name="rank_points" rows="3"
                                   placeholder='{"1":10,"2":8,"3":6,"4":4,"5":2,"6":1}'
                                   title="JSON format for rank-based points">{"1":10,"2":8,"3":6,"4":4,"5":2,"6":1}</textarea>
                         <small>Points for ranking positions in JSON format</small>
                     </div>
-            
+
                     <!-- Description -->
                     <div class="form-group">
                         <label for="description">📝 Description:</label>
@@ -366,7 +412,7 @@
                                   placeholder="Describe your tournament... What makes it exciting? What are the rules?"
                                   required></textarea>
                     </div>
-            
+
                     <!-- Auto-fill Tournament Name -->
                     <div class="form-group">
                         <button type="button" id="autoFillBtn" class="btn btn-secondary">
@@ -374,12 +420,12 @@
                         </button>
                         <small>Automatically creates name based on game and mode selection</small>
                     </div>
-            
+
                     <button type="submit" class="btn btn-primary create-tournament-btn">
                         🚀 Create Enhanced Tournament
                     </button>
                 </form>
-            
+
                 <!-- Tournament Preview -->
                 <div id="tournamentPreview" class="tournament-preview" style="display: none;">
                     <h4>🔍 Tournament Preview</h4>
@@ -402,7 +448,6 @@
                     </div>
                 </div>
             </div>
-
 
             <!-- NEW TAB CONTENT: Tournament Management -->
             <div id="manageTournamentsTab" class="tab-content">
@@ -593,6 +638,39 @@
                     <div id="participantsContainer">
                         <!-- Participants will be loaded here -->
                     </div>
+                </div>
+            </div>
+
+            <!-- NEW: Payout Action Modal -->
+            <div id="payoutModal" class="modal">
+                <div class="modal-content">
+                    <span class="close" onclick="closePayoutModal()">&times;</span>
+                    <h3 id="payoutModalTitle">Process Payout Request</h3>
+                    <div id="payoutDetails">
+                        <!-- Payout details will be populated here -->
+                    </div>
+                    <form id="payoutForm" class="form">
+                        <input type="hidden" id="payoutId" name="payoutId">
+                        <input type="hidden" id="payoutAction" name="action">
+                        
+                        <div class="form-group">
+                            <label for="adminNotes">Admin Notes (Optional):</label>
+                            <textarea id="adminNotes" name="adminNotes" rows="3" 
+                                    placeholder="Add any notes about this payout request..."></textarea>
+                        </div>
+                        
+                        <div class="payout-actions">
+                            <button type="button" class="btn btn-success" onclick="processPayout('approve')">
+                                ✅ Approve
+                            </button>
+                            <button type="button" class="btn btn-danger" onclick="processPayout('reject')">
+                                ❌ Reject
+                            </button>
+                            <button type="button" class="btn btn-secondary" onclick="closePayoutModal()">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
 
