@@ -5,7 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - Fantasy Tournament</title>
-    <meta name="description" content="Admin dashboard to manage tournaments, users, and platform settings for Fantasy Tournament website.">
+    <meta name="description"
+        content="Admin dashboard to manage tournaments, users, and platform settings for Fantasy Tournament website.">
     <link rel="stylesheet" href="/css/style.css">
     <style>
         /* Enhanced Tournament Creation Styles */
@@ -88,7 +89,8 @@
             justify-content: space-between;
         }
 
-        .game-badge, .mode-badge {
+        .game-badge,
+        .mode-badge {
             background: rgba(0, 0, 0, 0.7);
             color: white;
             padding: 4px 8px;
@@ -115,32 +117,76 @@
         }
 
         /* NEW: Payout Tab Styles */
-        .payout-badge {
-            position: absolute;
-            top: -5px;
-            right: -5px;
-            background: #ff4444;
-            color: white;
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            font-size: 0.7rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-        }
+        .payout-info {
+    background: #f5f5f5;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+}
 
-        .tab-btn {
-            position: relative;
-        }
+.payout-info p {
+    margin: 5px 0;
+}
 
-        @media (max-width: 768px) {
-            .form-row {
-                grid-template-columns: 1fr;
-                gap: 16px;
-            }
-        }
+.payout-status {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.status-pending {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.status-approved {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-rejected {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
+
+.notification-badge {
+    background: #dc3545;
+    color: white;
+    border-radius: 50%;
+    padding: 2px 6px;
+    font-size: 11px;
+    margin-left: 5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+}
+
+.empty-state, .error-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #666;
+}
+
+.empty-state h3, .error-state h3 {
+    margin-bottom: 10px;
+}
+
+.error-state ul {
+    text-align: left;
+    display: inline-block;
+    margin: 15px 0;
+}
     </style>
 </head>
 
@@ -172,9 +218,9 @@
                     Admin Actions
                 </button>
                 <!-- NEW: Payouts Tab -->
-                <button class="tab-btn" data-tab="payouts" id="payoutsTab">
-                    Payouts
-                    <span class="payout-badge" id="payoutBadge" style="display: none;">0</span>
+                <button class="tab-btn" data-tab="payouts">
+                    💸 Payouts
+                    <span id="payoutBadge" class="notification-badge" style="display: none;">0</span>
                 </button>
                 <button class="tab-btn" data-tab="create-tournament">
                     Create Tournament
@@ -293,12 +339,23 @@
 
             <!-- NEW: Payouts Tab -->
             <div id="payoutsTab" class="tab-content">
-                <h3>💳 Payout Requests Management</h3>
-                <p class="admin-info-text">
-                    📋 Manage withdrawal requests from users. Approve or reject pending payouts.
-                </p>
-                <div id="payoutsContainer" class="admin-table-container">
-                    <!-- Payout requests table will be loaded here -->
+                <div class="admin-section">
+                    <div class="admin-header">
+                        <h2>💸 Payout Requests</h2>
+                        <p>Manage user withdrawal requests</p>
+                    </div>
+                    
+                    <div class="analytics-grid">
+                        <div class="analytics-card">
+                            <h3>Pending Payouts</h3>
+                            <div class="analytics-value" id="pendingPayouts">0</div>
+                            <p>Awaiting approval</p>
+                        </div>
+                    </div>
+                    
+                    <div id="payoutsContainer" class="admin-container">
+                        <p>Loading payout requests...</p>
+                    </div>
                 </div>
             </div>
 
@@ -342,12 +399,12 @@
                         <div class="form-group">
                             <label for="tournamentName">🏆 Tournament Name:</label>
                             <input type="text" id="tournamentName" name="name"
-                                   placeholder="e.g., Free Fire Solo Championship" required>
+                                placeholder="e.g., Free Fire Solo Championship" required>
                         </div>
                         <div class="form-group">
                             <label for="entryFee">💰 Entry Fee (₹):</label>
-                            <input type="number" id="entryFee" name="entry_fee" min="1" step="0.01"
-                                   placeholder="10.00" required>
+                            <input type="number" id="entryFee" name="entry_fee" min="1" step="0.01" placeholder="10.00"
+                                required>
                         </div>
                     </div>
 
@@ -356,12 +413,12 @@
                         <div class="form-group">
                             <label for="prizePool">🎁 Prize Pool (₹):</label>
                             <input type="number" id="prizePool" name="prize_pool" min="1" step="0.01"
-                                   placeholder="500.00" required>
+                                placeholder="500.00" required>
                         </div>
                         <div class="form-group">
                             <label for="maxParticipants">👥 Max Participants:</label>
-                            <input type="number" id="maxParticipants" name="max_participants" min="2"
-                                   placeholder="50" required>
+                            <input type="number" id="maxParticipants" name="max_participants" min="2" placeholder="50"
+                                required>
                         </div>
                     </div>
 
@@ -381,8 +438,8 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="killPoints">🎯 Kill Points:</label>
-                            <input type="number" id="killPoints" name="kill_points" min="1" max="10"
-                                   placeholder="1" value="1">
+                            <input type="number" id="killPoints" name="kill_points" min="1" max="10" placeholder="1"
+                                value="1">
                             <small>Points per kill (1-10)</small>
                         </div>
                         <div class="form-group">
@@ -400,8 +457,8 @@
                     <div class="form-group">
                         <label for="rankPoints">🏆 Placement Points (JSON Format):</label>
                         <textarea id="rankPoints" name="rank_points" rows="3"
-                                  placeholder='{"1":10,"2":8,"3":6,"4":4,"5":2,"6":1}'
-                                  title="JSON format for rank-based points">{"1":10,"2":8,"3":6,"4":4,"5":2,"6":1}</textarea>
+                            placeholder='{"1":10,"2":8,"3":6,"4":4,"5":2,"6":1}'
+                            title="JSON format for rank-based points">{"1":10,"2":8,"3":6,"4":4,"5":2,"6":1}</textarea>
                         <small>Points for ranking positions in JSON format</small>
                     </div>
 
@@ -409,8 +466,8 @@
                     <div class="form-group">
                         <label for="description">📝 Description:</label>
                         <textarea id="description" name="description" rows="4"
-                                  placeholder="Describe your tournament... What makes it exciting? What are the rules?"
-                                  required></textarea>
+                            placeholder="Describe your tournament... What makes it exciting? What are the rules?"
+                            required></textarea>
                     </div>
 
                     <!-- Auto-fill Tournament Name -->
@@ -644,35 +701,38 @@
             <!-- NEW: Payout Action Modal -->
             <div id="payoutModal" class="modal">
                 <div class="modal-content">
-                    <span class="close" onclick="closePayoutModal()">&times;</span>
-                    <h3 id="payoutModalTitle">Process Payout Request</h3>
-                    <div id="payoutDetails">
-                        <!-- Payout details will be populated here -->
+                    <div class="modal-header">
+                        <h3>Process Payout Request</h3>
+                        <span class="close" onclick="closePayoutModal()">&times;</span>
                     </div>
-                    <form id="payoutForm" class="form">
-                        <input type="hidden" id="payoutId" name="payoutId">
-                        <input type="hidden" id="payoutAction" name="action">
-                        
+                    <div class="modal-body">
+                        <div id="payoutDetails">
+                            <!-- Payout details will be populated here -->
+                        </div>
+
                         <div class="form-group">
                             <label for="adminNotes">Admin Notes (Optional):</label>
-                            <textarea id="adminNotes" name="adminNotes" rows="3" 
-                                    placeholder="Add any notes about this payout request..."></textarea>
+                            <textarea id="adminNotes" placeholder="Add any notes about this payout decision..."
+                                rows="3"></textarea>
                         </div>
-                        
-                        <div class="payout-actions">
+
+                        <div class="modal-actions">
                             <button type="button" class="btn btn-success" onclick="processPayout('approve')">
-                                ✅ Approve
+                                ✅ Approve Payout
                             </button>
                             <button type="button" class="btn btn-danger" onclick="processPayout('reject')">
-                                ❌ Reject
+                                ❌ Reject Payout
                             </button>
                             <button type="button" class="btn btn-secondary" onclick="closePayoutModal()">
                                 Cancel
                             </button>
                         </div>
-                    </form>
+                    </div>
                 </div>
             </div>
+
+            <!-- Hidden input for payout ID -->
+            <input type="hidden" id="payoutId" />
 
             <div id="message" class="message"></div>
         </main>
