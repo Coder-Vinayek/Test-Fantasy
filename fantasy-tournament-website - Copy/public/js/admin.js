@@ -13,7 +13,7 @@ let isCreatingTournament = false;
 // NEW: Payout System Variables
 let currentPayoutId = null;
 
-window.showMessage = function(message, type) {
+window.showMessage = function (message, type) {
     const messageDiv = document.getElementById('message');
     if (!messageDiv) {
         // Fallback to alert if message div doesn't exist
@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', function () {
     setInterval(checkAdminSession, 5 * 60 * 1000);
 
     // Auto-refresh payouts every 30 seconds if on payouts tab
-    setInterval(function() {
+    setInterval(function () {
         const payoutsTab = document.getElementById('payoutsTab');
         if (payoutsTab && payoutsTab.classList.contains('active')) {
             loadPayouts();
@@ -126,11 +126,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function switchTab(tabName) {
         // Hide all tabs
+        const tabContents = document.querySelectorAll('.tab-content');
         tabContents.forEach(content => {
             content.classList.remove('active');
         });
 
         // Remove active class from all buttons
+        const tabBtns = document.querySelectorAll('.tab-btn');
         tabBtns.forEach(btn => {
             btn.classList.remove('active');
         });
@@ -214,7 +216,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // NEW: Update pending payouts
             const pendingPayouts = analytics.pendingPayouts || 0;
             document.getElementById('pendingPayouts').textContent = pendingPayouts;
-            
+
             // Update payout badge
             const payoutBadge = document.getElementById('payoutBadge');
             if (payoutBadge) {
@@ -296,19 +298,30 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // NEW: PAYOUT FUNCTIONS
+    // ====================================
+    //  Load Payouts Function
+    // ====================================
     async function loadPayouts() {
         try {
+            console.log('Loading payout requests...');
             const response = await adminFetch('/api/admin/payout-requests');
             if (!response) return;
 
             const payouts = await response.json();
+            console.log('Loaded payouts:', payouts);
 
+            const payoutsContainer = document.getElementById('payoutsContainer');
             if (payoutsContainer) {
                 payoutsContainer.innerHTML = '';
 
                 if (payouts.length === 0) {
-                    payoutsContainer.innerHTML = '<p>No payout requests found.</p>';
+                    payoutsContainer.innerHTML = `
+                    <div class="empty-state">
+                        <h3>💸 No Payout Requests</h3>
+                        <p>No withdrawal requests have been submitted yet.</p>
+                        <small>Users can request withdrawals from their winnings balance.</small>
+                    </div>
+                `;
                     return;
                 }
 
@@ -317,15 +330,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 const header = document.createElement('thead');
                 header.innerHTML = `
-                    <tr>
-                        <th>ID</th>
-                        <th>User</th>
-                        <th>Amount</th>
-                        <th>Requested</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                `;
+                <tr>
+                    <th>ID</th>
+                    <th>User</th>
+                    <th>Amount</th>
+                    <th>Requested</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            `;
                 table.appendChild(header);
 
                 const tbody = document.createElement('tbody');
@@ -340,34 +353,54 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (error) {
             console.error('Error loading payouts:', error);
             showMessage('Failed to load payout requests', 'error');
+
+            // Show error state in container
+            const payoutsContainer = document.getElementById('payoutsContainer');
+            if (payoutsContainer) {
+                payoutsContainer.innerHTML = `
+                <div class="error-state">
+                    <h3>❌ Error Loading Payouts</h3>
+                    <p>Failed to load payout requests. Please check:</p>
+                    <ul>
+                        <li>Database connection</li>
+                        <li>payout_requests table exists</li>
+                        <li>Server is running</li>
+                    </ul>
+                    <button onclick="loadPayouts()" class="btn btn-primary">Retry</button>
+                </div>
+            `;
+            }
         }
     }
 
+    // ====================================
+    //  Create Payout Row Function
+    // ====================================
     function createPayoutRow(payout) {
         const row = document.createElement('tr');
         const requestedDate = new Date(payout.requested_at).toLocaleDateString();
-        
-        const statusClass = payout.status === 'pending' ? 'status-pending' : 
-                           payout.status === 'approved' ? 'status-approved' : 'status-rejected';
 
-        const actionButtons = payout.status === 'pending' ? 
+        const statusClass = payout.status === 'pending' ? 'status-pending' :
+            payout.status === 'approved' ? 'status-approved' : 'status-rejected';
+
+        const actionButtons = payout.status === 'pending' ?
             `<button class="btn btn-small btn-primary process-payout-btn"
-                    data-payout-id="${payout.id}"
-                    data-username="${payout.username}"
-                    data-amount="${payout.amount}"
-                    data-email="${payout.email}">
-                Process
-            </button>` :
+                data-payout-id="${payout.id}"
+                data-username="${payout.username}"
+                data-amount="${payout.amount}"
+                data-email="${payout.email}">
+            Process
+        </button>` :
             '<span style="color: #666; font-style: italic;">Processed</span>';
 
         row.innerHTML = `
-            <td>${payout.id}</td>
-            <td>${payout.username}<br><small>${payout.email}</small></td>
-            <td>$${parseFloat(payout.amount).toFixed(2)}</td>
-            <td>${requestedDate}</td>
-            <td><span class="payout-status ${statusClass}">${payout.status}</span></td>
-            <td>${actionButtons}</td>
-        `;
+        <td>${payout.id}</td>
+        <td>${payout.username}<br><small>${payout.email}</small></td>
+        <td>₹${parseFloat(payout.amount).toFixed(2)}</td>
+        <td>${requestedDate}</td>
+        <td><span class="payout-status ${statusClass}">${payout.status}</span></td>
+        <td>${actionButtons}</td>
+    `;
 
         // Add event listener for process button
         const processBtn = row.querySelector('.process-payout-btn');
@@ -384,115 +417,103 @@ document.addEventListener('DOMContentLoaded', function () {
         return row;
     }
 
+    // ====================================
+    //  Payout Modal Functions
+    // ====================================
     function openPayoutModal(payoutId, username, amount, email) {
-        currentPayoutId = payoutId;
-        
         const modal = document.getElementById('payoutModal');
         const payoutDetails = document.getElementById('payoutDetails');
         const payoutIdInput = document.getElementById('payoutId');
-        
+
         if (payoutDetails) {
             payoutDetails.innerHTML = `
-                <div class="payout-info">
-                    <p><strong>User:</strong> ${username}</p>
-                    <p><strong>Email:</strong> ${email}</p>
-                    <p><strong>Amount:</strong> $${parseFloat(amount).toFixed(2)}</p>
-                </div>
-            `;
-        }
-        
-        if (payoutIdInput) {
-            payoutIdInput.value = payoutId;
-        }
-        
-        if (modal) {
-            modal.style.display = 'block';
-        }
-    }
-
-    // Make payout functions globally available
-window.openPayoutModal = function(payoutId, username, amount, email) {
-    const modal = document.getElementById('payoutModal');
-    const payoutDetails = document.getElementById('payoutDetails');
-    const payoutIdInput = document.getElementById('payoutId');
-    
-    if (payoutDetails) {
-        payoutDetails.innerHTML = `
             <div class="payout-info">
                 <p><strong>User:</strong> ${username}</p>
                 <p><strong>Email:</strong> ${email}</p>
                 <p><strong>Amount:</strong> ₹${parseFloat(amount).toFixed(2)}</p>
             </div>
         `;
-    }
-    
-    if (payoutIdInput) {
-        payoutIdInput.value = payoutId;
-    }
-    
-    if (modal) {
-        modal.style.display = 'block';
-    }
-    
-    // Store current payout ID
-    window.currentPayoutId = payoutId;
-};
-
-window.closePayoutModal = function() {
-    const modal = document.getElementById('payoutModal');
-    if (modal) {
-        modal.style.display = 'none';
-    }
-    window.currentPayoutId = null;
-    const adminNotesField = document.getElementById('adminNotes');
-    if (adminNotesField) {
-        adminNotesField.value = '';
-    }
-};
-
-window.processPayout = async function(action) {
-    if (!window.currentPayoutId || !['approve', 'reject'].includes(action)) {
-        alert('Invalid payout action');
-        return;
-    }
-    
-    const adminNotes = document.getElementById('adminNotes')?.value || '';
-    
-    try {
-        const response = await fetch('/api/admin/process-payout', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                payoutId: window.currentPayoutId,
-                action: action,
-                adminNotes: adminNotes
-            })
-        });
-        
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
         }
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            alert(`Payout request ${action}d successfully`);
-            window.closePayoutModal();
-            // Reload payouts list
-            if (typeof loadPayouts === 'function') {
-                loadPayouts();
+
+        if (payoutIdInput) {
+            payoutIdInput.value = payoutId;
+        }
+
+        if (modal) {
+            modal.style.display = 'block';
+        }
+
+        // Store current payout ID globally
+        window.currentPayoutId = payoutId;
+    }
+
+    function closePayoutModal() {
+        const modal = document.getElementById('payoutModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+        window.currentPayoutId = null;
+        const adminNotesField = document.getElementById('adminNotes');
+        if (adminNotesField) {
+            adminNotesField.value = '';
+        }
+    }
+
+    // ====================================
+    //  Process Payout Function
+    // ====================================
+    async function processPayout(action) {
+        if (!window.currentPayoutId || !['approve', 'reject'].includes(action)) {
+            alert('Invalid payout action');
+            return;
+        }
+
+        const adminNotes = document.getElementById('adminNotes')?.value || '';
+
+        // Confirm action
+        const confirmMessage = action === 'approve'
+            ? 'Are you sure you want to APPROVE this withdrawal request?'
+            : 'Are you sure you want to REJECT this withdrawal request? The amount will be refunded to the user.';
+
+        if (!confirm(confirmMessage)) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/admin/process-payout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    payoutId: window.currentPayoutId,
+                    action: action,
+                    adminNotes: adminNotes
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
             }
-        } else {
-            alert(result.error || 'Failed to process payout');
+
+            const result = await response.json();
+
+            if (result.success) {
+                showMessage(`Payout request ${action}d successfully`, 'success');
+                closePayoutModal();
+                // Reload payouts list
+                loadPayouts();
+                // Update analytics
+                loadAnalytics();
+            } else {
+                showMessage(result.error || 'Failed to process payout', 'error');
+            }
+
+        } catch (error) {
+            console.error('Error processing payout:', error);
+            showMessage('Network error. Please try again.', 'error');
         }
-        
-    } catch (error) {
-        console.error('Error processing payout:', error);
-        alert('Network error. Please try again.');
     }
-};
 
     // TOURNAMENT FUNCTIONS
     async function loadTournaments() {
@@ -1445,8 +1466,6 @@ window.processPayout = async function(action) {
         }
     }
 
-    // ===== NEW BUTTON FUNCTIONS =====
-
     // UPDATE TOURNAMENT STATUS FUNCTION
     async function updateTournamentStatus() {
         if (!currentManagedTournamentId) {
@@ -2301,7 +2320,13 @@ document.addEventListener('DOMContentLoaded', function () {
     }, 500);
 });
 
-// Make functions available globally
+// ====================================
+// Make functions globally available
+// ====================================
 window.initializeEnhancedTournamentCreation = initializeEnhancedTournamentCreation;
 window.autoFillTournamentName = autoFillTournamentName;
 window.updateTournamentPreview = updateTournamentPreview;
+window.loadPayouts = loadPayouts;
+window.openPayoutModal = openPayoutModal;
+window.closePayoutModal = closePayoutModal;
+window.processPayout = processPayout;
