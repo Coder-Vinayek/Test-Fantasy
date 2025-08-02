@@ -358,8 +358,6 @@ app.get('/api/tournaments', requireAuth, async (req, res) => {
     }
 });
 
-// MODIFIED: Tournament registration to use both wallet + winnings balance with deposit priority
-
 
 // API Routes - Wallet
 app.post('/api/wallet/deposit', requireAuth, async (req, res) => {
@@ -418,7 +416,7 @@ app.post('/api/wallet/deposit', requireAuth, async (req, res) => {
     }
 });
 
-// MODIFIED: Withdrawal system with minimum 25rs requirement and payout requests
+//  Withdrawal system with minimum 25rs requirement and payout requests
 app.post('/api/wallet/withdraw', requireAuth, checkBanStatus, async (req, res) => {
     const { amount } = req.body;
     const withdrawAmount = parseFloat(amount);
@@ -513,6 +511,7 @@ app.post('/api/wallet/withdraw', requireAuth, checkBanStatus, async (req, res) =
     }
 });
 
+
 app.get('/api/wallet/transactions', requireAuth, async (req, res) => {
     try {
         const { data: transactions, error } = await supabase
@@ -534,23 +533,10 @@ app.get('/api/wallet/transactions', requireAuth, async (req, res) => {
 });
 
 // ====================================
-// ADMIN API ROUTES - WITH PAYOUT TAB
+//  Get Payout Requests Endpoint
 // ====================================
-
-// NEW: Payout requests for admin dashboard
 app.get('/api/admin/payout-requests', requireAdmin, async (req, res) => {
     try {
-        // Check if table exists first
-        const { data: tableCheck, error: tableError } = await supabase
-            .from('payout_requests')
-            .select('count', { count: 'exact', head: true })
-            .limit(1);
-
-        if (tableError) {
-            console.error('Payout requests table does not exist:', tableError);
-            return res.json([]); // Return empty array instead of error
-        }
-
         const { data: payoutRequests, error } = await supabase
             .from('payout_requests')
             .select(`
@@ -561,6 +547,11 @@ app.get('/api/admin/payout-requests', requireAdmin, async (req, res) => {
 
         if (error) {
             console.error('Get payout requests error:', error);
+            // If table doesn't exist, return empty array with warning
+            if (error.code === '42P01') {
+                console.warn('⚠️ payout_requests table does not exist. Please create it first.');
+                return res.json([]);
+            }
             return res.status(500).json({ error: 'Failed to get payout requests' });
         }
 
@@ -577,6 +568,7 @@ app.get('/api/admin/payout-requests', requireAdmin, async (req, res) => {
             admin_notes: p.admin_notes
         }));
 
+        console.log(`✅ Loaded ${transformedRequests.length} payout requests`);
         res.json(transformedRequests);
     } catch (error) {
         console.error('Get payout requests error:', error);
@@ -584,7 +576,9 @@ app.get('/api/admin/payout-requests', requireAdmin, async (req, res) => {
     }
 });
 
-// NEW: Process payout request
+// ====================================
+//  Process Payout Request Endpoint
+// ====================================
 app.post('/api/admin/process-payout', requireAdmin, async (req, res) => {
     const { payoutId, action, adminNotes } = req.body;
 
@@ -647,6 +641,7 @@ app.post('/api/admin/process-payout', requireAdmin, async (req, res) => {
             }
         }
 
+        console.log(`✅ Payout request ${payoutId} ${action}d by admin ${req.session.userId}`);
         res.json({
             success: true,
             message: `Payout request ${action}d successfully`
@@ -657,7 +652,9 @@ app.post('/api/admin/process-payout', requireAdmin, async (req, res) => {
     }
 });
 
-// Analytics API Route
+// ====================================
+// UPDATED: Analytics with Payout Count
+// ====================================
 app.get('/api/admin/analytics', requireAdmin, async (req, res) => {
     try {
         const analytics = {};
@@ -734,13 +731,22 @@ app.get('/api/admin/analytics', requireAdmin, async (req, res) => {
         analytics.recentUsers = recentUsers || 0;
 
         // Get pending payout requests count
-        const { count: pendingPayouts, error: payoutError } = await supabase
-            .from('payout_requests')
-            .select('*', { count: 'exact', head: true })
-            .eq('status', 'pending');
+        try {
+            const { count: pendingPayouts, error: payoutError } = await supabase
+                .from('payout_requests')
+                .select('*', { count: 'exact', head: true })
+                .eq('status', 'pending');
 
-        if (payoutError) throw payoutError;
-        analytics.pendingPayouts = pendingPayouts || 0;
+            if (payoutError) {
+                console.warn('⚠️ Could not get payout count:', payoutError.message);
+                analytics.pendingPayouts = 0;
+            } else {
+                analytics.pendingPayouts = pendingPayouts || 0;
+            }
+        } catch (error) {
+            console.warn('⚠️ Payout requests table might not exist yet');
+            analytics.pendingPayouts = 0;
+        }
 
         res.json(analytics);
     } catch (error) {
