@@ -68,7 +68,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // ENHANCED: Deposit form handler (same as before but with better UX)
+    // ENHANCED: Deposit form handler 
     if (depositForm) {
         depositForm.addEventListener('submit', async function (e) {
             e.preventDefault();
