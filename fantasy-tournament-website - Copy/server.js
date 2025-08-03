@@ -5,6 +5,8 @@ const session = require('express-session');
 const bodyParser = require('body-parser');
 const path = require('path');
 const bcrypt = require('bcryptjs');
+const multer = require('multer');
+const fs = require('fs');
 
 // Load environment variables
 require('dotenv').config();
@@ -301,7 +303,7 @@ app.get('/api/user', requireAuth, async (req, res) => {
     try {
         const { data: user, error } = await supabase
             .from('users')
-            .select('id, username, email, wallet_balance, winnings_balance, ban_status, ban_expiry, ban_reason, banned_at')
+            .select('id, username, email, wallet_balance, winnings_balance, is_admin, ban_status, ban_expiry, ban_reason, banned_at')
             .eq('id', req.session.userId)
             .single();
 
@@ -1515,6 +1517,89 @@ app.post('/api/tournament/:id/chat', requireAuth, checkBanStatus, async (req, re
     } catch (error) {
         console.error('Send message error:', error);
         return res.status(500).json({ error: 'Failed to send message' });
+    }
+});
+
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(__dirname, 'public', 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Configure multer for image uploads
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, uploadsDir);
+    },
+    filename: function (req, file, cb) {
+        // Generate unique filename with timestamp
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const fileExtension = path.extname(file.originalname);
+        cb(null, `match-result-${uniqueSuffix}${fileExtension}`);
+    }
+});
+
+const upload = multer({
+    storage: storage,
+    limits: {
+        fileSize: 5 * 1024 * 1024, // 5MB limit
+    },
+    fileFilter: function (req, file, cb) {
+        // Check if file is an image
+        if (file.mimetype.startsWith('image/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only image files are allowed!'), false);
+        }
+    }
+});
+
+// Admin Image Upload Route for Tournament Chat
+app.post('/api/tournament/:id/upload-image', requireAdmin, upload.single('image'), async (req, res) => {
+    const tournamentId = req.params.id;
+    
+    if (!req.file) {
+        return res.status(400).json({ error: 'No image file provided' });
+    }
+
+    try {
+        // Insert image message into chat
+        const imageUrl = `/uploads/${req.file.filename}`;
+        const message = req.body.message || 'Match Result Image';
+        
+        const { data, error } = await supabase
+            .from('tournament_chat_messages')
+            .insert([{
+                tournament_id: tournamentId,
+                user_id: req.session.userId,
+                message: message,
+                image_url: imageUrl,
+                message_type: 'image'
+            }])
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Image message insert error:', error);
+            // Delete uploaded file if database insert fails
+            fs.unlinkSync(req.file.path);
+            return res.status(500).json({ error: 'Failed to save image message' });
+        }
+
+        res.json({ 
+            success: true, 
+            message: 'Image uploaded successfully',
+            imageUrl: imageUrl,
+            messageId: data.id
+        });
+
+    } catch (error) {
+        console.error('Image upload error:', error);
+        // Delete uploaded file if error occurs
+        if (req.file && fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+        }
+        return res.status(500).json({ error: 'Failed to upload image' });
     }
 });
 
