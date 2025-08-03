@@ -195,108 +195,233 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // ANALYTICS FUNCTIONS - UPDATED with Payout Count
+    // ANALYTICS FUNCTIONS 
     async function loadAnalytics() {
         try {
+            console.log('📊 Loading analytics...');
+            
             const response = await adminFetch('/api/admin/analytics');
-            if (!response) return;
-
+            if (!response) {
+                console.error('❌ No response from analytics API');
+                return;
+            }
+    
             const analytics = await response.json();
-
-            // Update metrics
-            document.getElementById('totalUsers').textContent = analytics.totalUsers || 0;
-            document.getElementById('totalTournaments').textContent = analytics.totalTournaments || 0;
-            document.getElementById('activeTournaments').textContent = analytics.activeTournaments || 0;
-            document.getElementById('totalRevenue').textContent = (analytics.totalRevenue || 0).toFixed(2);
-            document.getElementById('totalProfit').textContent = (analytics.totalProfit || 0).toFixed(2);
-            document.getElementById('totalWithdrawals').textContent = (analytics.totalWithdrawals || 0).toFixed(2);
-            document.getElementById('entryFees').textContent = (analytics.entryFeesCollected || 0).toFixed(2);
-            document.getElementById('recentUsers').textContent = analytics.recentUsers || 0;
-
-            // NEW: Update pending payouts
+            console.log('📈 Analytics data received:', analytics);
+    
+            // FIXED: Safely update metrics with fallbacks
+            const updateElement = (id, value, fallback = 0) => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.textContent = value !== undefined && value !== null ? value : fallback;
+                } else {
+                    console.warn(`⚠️ Element with id '${id}' not found`);
+                }
+            };
+    
+            const updateNumericElement = (id, value, decimals = 0, fallback = 0) => {
+                const element = document.getElementById(id);
+                if (element) {
+                    const numValue = parseFloat(value) || fallback;
+                    element.textContent = decimals > 0 ? numValue.toFixed(decimals) : numValue.toString();
+                } else {
+                    console.warn(`⚠️ Element with id '${id}' not found`);
+                }
+            };
+    
+            // Update basic metrics with safety checks
+            updateElement('totalUsers', analytics.totalUsers, 0);
+            updateElement('totalTournaments', analytics.totalTournaments, 0);
+            updateElement('activeTournaments', analytics.activeTournaments, 0);
+            updateNumericElement('totalRevenue', analytics.totalRevenue, 2, 0);
+            updateNumericElement('totalProfit', analytics.totalProfit, 2, 0);
+            updateNumericElement('totalWithdrawals', analytics.totalWithdrawals, 2, 0);
+            updateNumericElement('entryFees', analytics.entryFeesCollected, 2, 0);
+            updateElement('recentUsers', analytics.recentUsers, 0);
+    
+            // FIXED: Update pending payouts with safety check
             const pendingPayouts = analytics.pendingPayouts || 0;
-            document.getElementById('pendingPayouts').textContent = pendingPayouts;
-
-            // Update payout badge
+            updateElement('pendingPayouts', pendingPayouts, 0);
+    
+            // FIXED: Update payout badge with proper logic
             const payoutBadge = document.getElementById('payoutBadge');
             if (payoutBadge) {
                 if (pendingPayouts > 0) {
-                    payoutBadge.textContent = pendingPayouts;
+                    payoutBadge.textContent = pendingPayouts.toString();
                     payoutBadge.style.display = 'flex';
+                    payoutBadge.style.visibility = 'visible';
                 } else {
                     payoutBadge.style.display = 'none';
+                    payoutBadge.style.visibility = 'hidden';
                 }
             }
-
-            // Popular tournament
-            const popularTournament = analytics.popularTournament || { name: 'No tournaments', current_participants: 0, max_participants: 0 };
-            document.getElementById('popularTournamentStats').textContent =
-                `${popularTournament.current_participants || 0}/${popularTournament.max_participants || 0} participants`;
-
-            // Recent activity trends
-            displayRecentActivity(analytics.transactionTrends || []);
-            displayTournamentStatus(analytics.tournamentStatus || []);
-
+    
+            // FIXED: Popular tournament with safety checks
+            const popularTournament = analytics.popularTournament || { 
+                name: 'No tournaments', 
+                current_participants: 0, 
+                max_participants: 0 
+            };
+            
+            const popularNameElement = document.getElementById('popularTournamentName');
+            if (popularNameElement) {
+                popularNameElement.textContent = popularTournament.name;
+            }
+            
+            const popularStatsElement = document.getElementById('popularTournamentStats');
+            if (popularStatsElement) {
+                popularStatsElement.textContent = 
+                    `${popularTournament.current_participants || 0}/${popularTournament.max_participants || 0} participants`;
+            }
+    
+            // FIXED: Recent activity with improved error handling
+            try {
+                const transactionTrends = analytics.transactionTrends || [];
+                displayRecentActivity(transactionTrends);
+            } catch (error) {
+                console.error('⚠️ Error displaying recent activity:', error);
+                displayRecentActivityError();
+            }
+    
+            // FIXED: Tournament status with improved error handling  
+            try {
+                const tournamentStatus = analytics.tournamentStatus || [];
+                displayTournamentStatus(tournamentStatus);
+            } catch (error) {
+                console.error('⚠️ Error displaying tournament status:', error);
+                displayTournamentStatusError();
+            }
+    
+            console.log('✅ Analytics loaded successfully');
+    
         } catch (error) {
-            console.error('Error loading analytics:', error);
-            showMessage('Failed to load analytics data', 'error');
+            console.error('❌ Error loading analytics:', error);
+            showMessage('Failed to load analytics data. Please refresh the page.', 'error');
+            
+            // Show error state in analytics
+            displayAnalyticsError();
         }
     }
 
     function displayRecentActivity(trends) {
         const container = document.getElementById('recentActivity');
+        if (!container) {
+            console.warn('⚠️ recentActivity container not found');
+            return;
+        }
+    
         container.innerHTML = '';
-
-        if (trends.length === 0) {
+    
+        if (!trends || trends.length === 0) {
             container.innerHTML = '<p class="no-activity-message">No admin actions in the last 7 days</p>';
             return;
         }
-
-        const groupedByDate = {};
-        trends.forEach(trend => {
-            if (!groupedByDate[trend.date]) {
-                groupedByDate[trend.date] = { credit: 0, debit: 0 };
-            }
-            groupedByDate[trend.date][trend.transaction_type] = trend.total_amount;
-        });
-
-        Object.keys(groupedByDate).forEach(date => {
-            const item = document.createElement('div');
-            item.className = 'trend-item';
-            item.innerHTML = `
-            <div>
-                <strong>${new Date(date).toLocaleDateString()}</strong>
-            </div>
-            <div>
-                <span class="credit-amount">+$${(groupedByDate[date].credit || 0).toFixed(2)} winnings awarded</span>
-                ${groupedByDate[date].debit > 0 ? `| <span class="debit-amount">-$${(groupedByDate[date].debit || 0).toFixed(2)} deductions</span>` : ''}
-            </div>
-        `;
-            container.appendChild(item);
-        });
+    
+        try {
+            // Group by date with improved logic for Node 12.22
+            const groupedByDate = {};
+            trends.forEach(trend => {
+                const date = trend.date;
+                if (!groupedByDate[date]) {
+                    groupedByDate[date] = { credit: 0, debit: 0 };
+                }
+                groupedByDate[date][trend.transaction_type] = trend.total_amount || 0;
+            });
+    
+            // Display grouped data
+            Object.keys(groupedByDate).sort().forEach(date => {
+                const item = document.createElement('div');
+                item.className = 'trend-item';
+                
+                const formattedDate = new Date(date + 'T00:00:00').toLocaleDateString();
+                const creditAmount = (groupedByDate[date].credit || 0).toFixed(2);
+                const debitAmount = (groupedByDate[date].debit || 0).toFixed(2);
+                
+                item.innerHTML = `
+                    <div>
+                        <strong>${formattedDate}</strong>
+                    </div>
+                    <div>
+                        <span class="credit-amount">+$${creditAmount} winnings awarded</span>
+                        ${parseFloat(debitAmount) > 0 ? `| <span class="debit-amount">-$${debitAmount} deductions</span>` : ''}
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        } catch (error) {
+            console.error('⚠️ Error processing recent activity:', error);
+            container.innerHTML = '<p class="error-message">Error loading recent activity</p>';
+        }
     }
 
     function displayTournamentStatus(statusData) {
         const container = document.getElementById('tournamentStatusChart');
+        if (!container) {
+            console.warn('⚠️ tournamentStatusChart container not found');
+            return;
+        }
+    
         container.innerHTML = '';
-
-        statusData.forEach(status => {
-            const item = document.createElement('div');
-            item.className = 'trend-item';
-            const statusClass = status.status || 'default';
-
-            item.innerHTML = `
-            <div class="status-container">
-                <div class="status-indicator ${statusClass}"></div>
-                <strong>${status.status.charAt(0).toUpperCase() + status.status.slice(1)}</strong>
-            </div>
-            <div class="tournament-count ${statusClass}">
-                ${status.count} tournaments
-            </div>
-        `;
-            container.appendChild(item);
-        });
+    
+        if (!statusData || statusData.length === 0) {
+            container.innerHTML = '<p class="no-status-message">No tournament status data available</p>';
+            return;
+        }
+    
+        try {
+            statusData.forEach(status => {
+                const item = document.createElement('div');
+                item.className = 'trend-item';
+                const statusClass = (status.status || 'default').toLowerCase();
+    
+                item.innerHTML = `
+                    <div class="status-container">
+                        <div class="status-indicator ${statusClass}"></div>
+                        <strong>${status.status.charAt(0).toUpperCase() + status.status.slice(1)}</strong>
+                    </div>
+                    <div class="tournament-count ${statusClass}">
+                        ${status.count || 0} tournaments
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        } catch (error) {
+            console.error('⚠️ Error processing tournament status:', error);
+            container.innerHTML = '<p class="error-message">Error loading tournament status</p>';
+        }
     }
+
+    // NEW: Error state displays
+function displayRecentActivityError() {
+    const container = document.getElementById('recentActivity');
+    if (container) {
+        container.innerHTML = '<p class="error-message">⚠️ Error loading recent activity</p>';
+    }
+}
+
+function displayTournamentStatusError() {
+    const container = document.getElementById('tournamentStatusChart');
+    if (container) {
+        container.innerHTML = '<p class="error-message">⚠️ Error loading tournament status</p>';
+    }
+}
+
+function displayAnalyticsError() {
+    // Reset all values to show error state
+    const errorMessage = '⚠️ Error';
+    const elements = [
+        'totalUsers', 'totalTournaments', 'activeTournaments', 
+        'totalRevenue', 'totalProfit', 'totalWithdrawals', 
+        'entryFees', 'recentUsers', 'pendingPayouts'
+    ];
+    
+    elements.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.textContent = errorMessage;
+        }
+    });
+}
 
     // Make functions globally available
     window.loadPayouts = loadPayouts;
