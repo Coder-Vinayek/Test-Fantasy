@@ -3810,3 +3810,68 @@ margin:15px 0;
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+
+/* Force the chat panel to have a fixed height */
+.lobby-panel.chat-panel {
+    height: 500px !important;
+    max-height: 500px !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+/* Make the chat container take remaining space */
+.chat-container {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+}
+
+/* Make messages scrollable and limit their space */
+#chatMessages {
+    flex: 1 !important;
+    overflow-y: auto !important;
+    max-height: 300px !important;
+    min-height: 200px !important;
+}
+
+/* Reduce admin upload section size */
+.admin-upload-section {
+    padding: 8px !important;
+    margin-bottom: 8px !important;
+    flex-shrink: 0 !important;
+}
+
+.upload-container {
+    gap: 5px !important;
+}
+
+.upload-container input[type="text"] {
+    padding: 6px 8px !important;
+    font-size: 12px !important;
+}
+
+.btn-upload {
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+}
+
+/* Keep chat input at bottom and always visible */
+.chat-input-container {
+    flex-shrink: 0 !important;
+    margin-top: 8px !important;
+    padding: 8px 0 !important;
+}
+
+/* Make images much smaller in chat */
+.message-image img {
+    max-height: 100px !important;
+    max-width: 200px !important;
+    object-fit: cover !important;
+}
+
+/* Reduce message padding */
+.chat-message {
+    padding: 8px !important;
+    margin-bottom: 8px !important;
+}
