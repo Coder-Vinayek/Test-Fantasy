@@ -18,7 +18,7 @@
                 <button id="logoutBtn" class="btn btn-small">Logout</button>
             </nav>
         </header>
-        
+
         <main class="main-content">
             <!-- Tournament Header -->
             <div class="tournament-lobby-header">
@@ -28,7 +28,7 @@
                         <span id="tournamentStatus" class="status-badge">upcoming</span>
                     </div>
                 </div>
-                
+
                 <div class="tournament-details-grid">
                     <div class="detail-item">
                         <span class="detail-label">🏆 Prize Pool</span>
@@ -59,12 +59,26 @@
                             <span id="onlineCount">0</span> online
                         </span>
                     </div>
-                    
+
                     <div class="chat-container">
                         <div id="chatMessages" class="chat-messages">
                             <!-- Chat messages will appear here -->
                         </div>
-                        
+
+                        <!-- Admin Upload Section -->
+                        <div id="adminUploadSection" class="admin-upload-section" style="display: none;">
+                            <div class="upload-container">
+                                <input type="file" id="imageUploadInput" accept="image/*" style="display: none;">
+                                <input type="text" id="imageMessageInput" placeholder="Add a description for the image..." maxlength="100">
+                                <button id="uploadImageBtn" class="btn btn-upload">📷 Upload Match Result</button>
+                                <button id="cancelUploadBtn" class="btn btn-cancel" style="display: none;">Cancel</button>
+                            </div>
+                            <div id="uploadPreview" class="upload-preview" style="display: none;">
+                                <img id="previewImage" src="" alt="Preview">
+                                <button id="confirmUploadBtn" class="btn btn-primary">Upload Image</button>
+                            </div>
+                        </div>
+
                         <div class="chat-input-container">
                             <input type="text" id="chatInput" placeholder="Type a message..." maxlength="200">
                             <button id="sendMessageBtn" class="btn btn-primary">Send</button>
@@ -77,7 +91,7 @@
                     <div class="panel-header">
                         <h3>🎮 Match Information</h3>
                     </div>
-                    
+
                     <div class="match-info-content">
                         <div id="adminAnnouncements" class="admin-announcements">
                             <h4>📢 Admin Announcements</h4>
@@ -85,7 +99,7 @@
                                 <p class="no-announcements">No announcements yet</p>
                             </div>
                         </div>
-                        
+
                         <div id="matchDetails" class="match-details">
                             <h4>🎯 Match Details</h4>
                             <div class="match-detail-card">
@@ -116,7 +130,7 @@
                         <h3>👥 Registered Players</h3>
                         <span class="refresh-btn" id="refreshPlayers">🔄</span>
                     </div>
-                    
+
                     <div class="players-container">
                         <div id="playersList" class="players-list">
                             <!-- Players will be loaded here -->
@@ -138,12 +152,12 @@
 
             <div id="message" class="message"></div>
         </main>
-        
+
         <footer class="footer">
             <p>&copy; 2025 Fantasy Tournament. All rights reserved.</p>
         </footer>
     </div>
-    
+
     <script src="/js/tournament-lobby.js"></script>
 </body>
 </html>
