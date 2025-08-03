@@ -653,7 +653,7 @@ app.post('/api/admin/process-payout', requireAdmin, async (req, res) => {
 });
 
 // ====================================
-// UPDATED: Analytics with Payout Count
+//  Analytics Endpoint
 // ====================================
 app.get('/api/admin/analytics', requireAdmin, async (req, res) => {
     try {
@@ -693,7 +693,7 @@ app.get('/api/admin/analytics', requireAdmin, async (req, res) => {
             .eq('balance_type', 'wallet');
 
         if (revenueError) throw revenueError;
-        analytics.totalRevenue = revenueData.reduce((sum, t) => sum + parseFloat(t.amount), 0);
+        analytics.totalRevenue = (revenueData || []).reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
 
         // Get total withdrawals
         const { data: withdrawalData, error: withdrawalError } = await supabase
@@ -703,7 +703,7 @@ app.get('/api/admin/analytics', requireAdmin, async (req, res) => {
             .eq('balance_type', 'winnings');
 
         if (withdrawalError) throw withdrawalError;
-        analytics.totalWithdrawals = withdrawalData.reduce((sum, t) => sum + parseFloat(t.amount), 0);
+        analytics.totalWithdrawals = (withdrawalData || []).reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
 
         // Get entry fees collected
         const { data: entryFeeData, error: entryFeeError } = await supabase
@@ -712,7 +712,7 @@ app.get('/api/admin/analytics', requireAdmin, async (req, res) => {
             .ilike('description', '%Tournament registration:%');
 
         if (entryFeeError) throw entryFeeError;
-        analytics.entryFeesCollected = entryFeeData.reduce((sum, t) => sum + parseFloat(t.amount), 0);
+        analytics.entryFeesCollected = (entryFeeData || []).reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
 
         // Calculate total profit
         analytics.totalProfit = analytics.totalRevenue - analytics.totalWithdrawals;
@@ -748,10 +748,111 @@ app.get('/api/admin/analytics', requireAdmin, async (req, res) => {
             analytics.pendingPayouts = 0;
         }
 
+        // FIXED: Get popular tournament data
+        try {
+            const { data: popularTournamentData, error: popularError } = await supabase
+                .from('tournaments')
+                .select('id, name, current_participants, max_participants')
+                .order('current_participants', { ascending: false })
+                .limit(1)
+                .single();
+
+            if (popularError || !popularTournamentData) {
+                analytics.popularTournament = {
+                    name: 'No tournaments',
+                    current_participants: 0,
+                    max_participants: 0
+                };
+            } else {
+                analytics.popularTournament = popularTournamentData;
+            }
+        } catch (error) {
+            console.warn('⚠️ Could not get popular tournament:', error.message);
+            analytics.popularTournament = {
+                name: 'No tournaments',
+                current_participants: 0,
+                max_participants: 0
+            };
+        }
+
+        // FIXED: Get tournament status distribution
+        try {
+            const { data: statusData, error: statusError } = await supabase
+                .from('tournaments')
+                .select('status');
+
+            if (statusError) throw statusError;
+
+            // Count statuses manually for Node 12.22 compatibility
+            const statusCounts = {};
+            (statusData || []).forEach(tournament => {
+                const status = tournament.status || 'unknown';
+                statusCounts[status] = (statusCounts[status] || 0) + 1;
+            });
+
+            analytics.tournamentStatus = Object.keys(statusCounts).map(status => ({
+                status: status,
+                count: statusCounts[status]
+            }));
+        } catch (error) {
+            console.warn('⚠️ Could not get tournament status:', error.message);
+            analytics.tournamentStatus = [];
+        }
+
+        // FIXED: Get transaction trends (last 7 days)
+        try {
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+            const { data: trendData, error: trendError } = await supabase
+                .from('wallet_transactions')
+                .select('transaction_type, amount, transaction_date')
+                .gte('transaction_date', sevenDaysAgo.toISOString())
+                .or('description.ilike.%admin%,description.ilike.%Prize winnings%,description.ilike.%added by admin%');
+
+            if (trendError) throw trendError;
+
+            // Group by date and type for Node 12.22 compatibility
+            const groupedTrends = {};
+            (trendData || []).forEach(transaction => {
+                const date = transaction.transaction_date.split('T')[0]; // Get date part only
+                const type = transaction.transaction_type;
+                
+                if (!groupedTrends[date]) {
+                    groupedTrends[date] = { credit: 0, debit: 0 };
+                }
+                
+                groupedTrends[date][type] = (groupedTrends[date][type] || 0) + parseFloat(transaction.amount || 0);
+            });
+
+            analytics.transactionTrends = Object.keys(groupedTrends).map(date => ({
+                date: date,
+                transaction_type: 'credit',
+                total_amount: groupedTrends[date].credit
+            })).concat(Object.keys(groupedTrends).map(date => ({
+                date: date,
+                transaction_type: 'debit', 
+                total_amount: groupedTrends[date].debit
+            })));
+        } catch (error) {
+            console.warn('⚠️ Could not get transaction trends:', error.message);
+            analytics.transactionTrends = [];
+        }
+
+        console.log('📊 Analytics loaded successfully:', {
+            totalUsers: analytics.totalUsers,
+            totalTournaments: analytics.totalTournaments,
+            pendingPayouts: analytics.pendingPayouts,
+            popularTournament: analytics.popularTournament.name
+        });
+
         res.json(analytics);
     } catch (error) {
-        console.error('Analytics error:', error);
-        res.status(500).json({ error: 'Failed to load analytics' });
+        console.error('❌ Analytics error:', error);
+        res.status(500).json({ 
+            error: 'Failed to load analytics',
+            details: error.message 
+        });
     }
 });
 
