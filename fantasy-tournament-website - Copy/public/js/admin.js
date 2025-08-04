@@ -2456,3 +2456,235 @@ document.addEventListener('DOMContentLoaded', function () {
 window.initializeEnhancedTournamentCreation = initializeEnhancedTournamentCreation;
 window.autoFillTournamentName = autoFillTournamentName;
 window.updateTournamentPreview = updateTournamentPreview;
+
+// Entry Fee Toggle Functionality - FIXED VERSION
+function initializeEntryFeeToggle() {
+    const paidRadio = document.getElementById('paidTournament');
+    const freeRadio = document.getElementById('freeTournament');
+    const entryFeeInput = document.getElementById('entryFeeInput');
+    const freeTournamentMessage = document.getElementById('freeTournamentMessage');
+    const entryFeeField = document.getElementById('entryFee');
+    
+    if (!paidRadio || !freeRadio || !entryFeeInput || !freeTournamentMessage || !entryFeeField) {
+        console.warn('Entry fee toggle elements not found');
+        return;
+    }
+    
+    // Function to toggle between paid and free
+    function toggleEntryFeeMode() {
+        if (freeRadio.checked) {
+            // Free tournament mode
+            entryFeeInput.style.display = 'none';
+            freeTournamentMessage.style.display = 'block';
+            
+            // FIXED: Remove required attribute and set value to 0
+            entryFeeField.required = false;
+            entryFeeField.removeAttribute('required');
+            entryFeeField.value = '0';
+            
+            console.log('✅ Switched to FREE tournament mode');
+        } else {
+            // Paid tournament mode
+            entryFeeInput.style.display = 'block';
+            freeTournamentMessage.style.display = 'none';
+            
+            // FIXED: Add required attribute back and clear value
+            entryFeeField.required = true;
+            entryFeeField.setAttribute('required', 'required');
+            entryFeeField.value = '';
+            
+            console.log('✅ Switched to PAID tournament mode');
+        }
+        
+        // Update tournament preview if it exists
+        if (typeof updateTournamentPreview === 'function') {
+            updateTournamentPreview();
+        }
+    }
+    
+    // Add event listeners
+    paidRadio.addEventListener('change', toggleEntryFeeMode);
+    freeRadio.addEventListener('change', toggleEntryFeeMode);
+    
+    // Initialize with default state (paid)
+    toggleEntryFeeMode();
+}
+
+// Enhanced Tournament Creation Form Handler - FIXED VERSION
+function enhancedCreateTournamentFormHandler(e) {
+    e.preventDefault();
+    
+    // PREVENT DOUBLE SUBMISSION
+    if (window.isCreatingTournament) {
+        console.log('Tournament creation already in progress...');
+        return;
+    }
+    
+    window.isCreatingTournament = true;
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    
+    try {
+        // Disable button and show loading
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '🔄 Creating Tournament...';
+        
+        const formData = new FormData(e.target);
+        
+        // Handle entry fee based on tournament type
+        let entryFee = 0;
+        const tournamentType = formData.get('tournamentType');
+        
+        if (tournamentType === 'free') {
+            entryFee = 0;
+            console.log('🎉 Creating FREE tournament (entry fee: $0)');
+        } else {
+            // FIXED: Better validation for paid tournaments
+            const entryFeeValue = formData.get('entry_fee');
+            entryFee = parseFloat(entryFeeValue);
+            
+            if (!entryFeeValue || isNaN(entryFee) || entryFee <= 0) {
+                throw new Error('Please enter a valid entry fee amount for paid tournaments (minimum $0.01)');
+            }
+            console.log('💰 Creating PAID tournament (entry fee: $' + entryFee + ')');
+        }
+        
+        const tournamentData = {
+            name: formData.get('name'),
+            description: formData.get('description'),
+            game_type: formData.get('game_type'),
+            team_mode: formData.get('team_mode'),
+            entry_fee: entryFee, // This will be 0 for free tournaments
+            prize_pool: parseFloat(formData.get('prize_pool')),
+            max_participants: parseInt(formData.get('max_participants')),
+            start_date: formData.get('start_date'),
+            end_date: formData.get('end_date'),
+            kill_points: parseInt(formData.get('kill_points')) || 1,
+            rank_points: formData.get('rank_points') || '{"1":10,"2":8,"3":6,"4":4,"5":2,"6":1}',
+            match_type: formData.get('match_type') || 'Battle Royale'
+        };
+        
+        console.log('Creating tournament with data:', tournamentData);
+        
+        // Create tournament using enhanced endpoint
+        createTournamentWithAPI(tournamentData, submitBtn, originalText, e.target);
+        
+    } catch (error) {
+        console.error('Tournament creation error:', error);
+        showMessage(error.message || 'Failed to create tournament', 'error');
+        
+        // Re-enable button
+        window.isCreatingTournament = false;
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+    }
+}
+
+// API call to create tournament - SAME AS BEFORE
+async function createTournamentWithAPI(tournamentData, submitBtn, originalText, form) {
+    try {
+        const response = await fetch('/api/admin/tournaments/enhanced', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(tournamentData)
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+            const tournamentTypeMessage = tournamentData.entry_fee === 0 ? 
+                '🎉 FREE tournament created successfully!' : 
+                `💰 PAID tournament created successfully! Entry fee: $${tournamentData.entry_fee}`;
+                
+            showMessage(result.message || tournamentTypeMessage, 'success');
+            
+            // Reset form
+            form.reset();
+            
+            // FIXED: Reinitialize toggle state after reset
+            setTimeout(() => {
+                initializeEntryFeeToggle();
+            }, 100);
+            
+            // Refresh data
+            if (typeof loadAnalytics === 'function') {
+                loadAnalytics();
+            }
+            if (document.getElementById('tournamentsTab') && document.getElementById('tournamentsTab').classList.contains('active')) {
+                if (typeof loadTournaments === 'function') {
+                    loadTournaments();
+                }
+            }
+        } else {
+            throw new Error(result.error || 'Failed to create tournament');
+        }
+    } catch (error) {
+        console.error('API call error:', error);
+        showMessage(error.message || 'Network error. Please try again.', 'error');
+    } finally {
+        // Re-enable button and reset state
+        window.isCreatingTournament = false;
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+    }
+}
+
+// FIXED: Enhanced form validation before submit
+function validateTournamentForm() {
+    const tournamentType = document.querySelector('input[name="tournamentType"]:checked')?.value;
+    const entryFeeField = document.getElementById('entryFee');
+    
+    if (tournamentType === 'paid') {
+        const entryFeeValue = parseFloat(entryFeeField.value);
+        if (!entryFeeValue || entryFeeValue <= 0) {
+            showMessage('Please enter a valid entry fee for paid tournaments', 'error');
+            entryFeeField.focus();
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+// Initialize when DOM is ready - FIXED VERSION
+document.addEventListener('DOMContentLoaded', function() {
+    // Wait for page to fully load
+    setTimeout(() => {
+        console.log('🔧 Initializing enhanced tournament creation...');
+        
+        // Initialize the toggle functionality
+        initializeEntryFeeToggle();
+        
+        // Replace the form handler if it exists
+        const createTournamentForm = document.getElementById('createTournamentForm');
+        if (createTournamentForm) {
+            // Remove any existing listeners
+            createTournamentForm.removeEventListener('submit', enhancedCreateTournamentFormHandler);
+            
+            // Add form validation before submit
+            createTournamentForm.addEventListener('submit', function(e) {
+                // Validate form first
+                if (!validateTournamentForm()) {
+                    e.preventDefault();
+                    return false;
+                }
+                
+                // If validation passes, handle enhanced creation
+                enhancedCreateTournamentFormHandler(e);
+            });
+            
+            console.log('✅ Enhanced tournament creation form handler initialized');
+        } else {
+            console.warn('⚠️ createTournamentForm not found');
+        }
+        
+    }, 1000);
+});
+
+// Make functions globally available
+window.initializeEntryFeeToggle = initializeEntryFeeToggle;
+window.enhancedCreateTournamentFormHandler = enhancedCreateTournamentFormHandler;
+window.validateTournamentForm = validateTournamentForm;
+window.createTournamentWithAPI = createTournamentWithAPI;
