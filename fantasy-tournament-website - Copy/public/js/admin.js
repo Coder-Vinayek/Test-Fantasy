@@ -2457,55 +2457,58 @@ window.initializeEnhancedTournamentCreation = initializeEnhancedTournamentCreati
 window.autoFillTournamentName = autoFillTournamentName;
 window.updateTournamentPreview = updateTournamentPreview;
 
-// Entry Fee Toggle Functionality - FIXED VERSION
 function initializeEntryFeeToggle() {
     const paidRadio = document.getElementById('paidTournament');
     const freeRadio = document.getElementById('freeTournament');
     const entryFeeInput = document.getElementById('entryFeeInput');
     const freeTournamentMessage = document.getElementById('freeTournamentMessage');
     const entryFeeField = document.getElementById('entryFee');
-    
+
     if (!paidRadio || !freeRadio || !entryFeeInput || !freeTournamentMessage || !entryFeeField) {
         console.warn('Entry fee toggle elements not found');
         return;
     }
-    
+
     // Function to toggle between paid and free
     function toggleEntryFeeMode() {
         if (freeRadio.checked) {
             // Free tournament mode
             entryFeeInput.style.display = 'none';
             freeTournamentMessage.style.display = 'block';
-            
-            // FIXED: Remove required attribute and set value to 0
-            entryFeeField.required = false;
+
+            // FIXED: Properly remove required and set value to 0
             entryFeeField.removeAttribute('required');
+            entryFeeField.required = false;
             entryFeeField.value = '0';
             
+            // FIXED: Also disable the field to prevent validation
+            entryFeeField.disabled = true;
+
             console.log('✅ Switched to FREE tournament mode');
         } else {
             // Paid tournament mode
             entryFeeInput.style.display = 'block';
             freeTournamentMessage.style.display = 'none';
-            
-            // FIXED: Add required attribute back and clear value
-            entryFeeField.required = true;
+
+            // FIXED: Properly add required attribute and enable field
             entryFeeField.setAttribute('required', 'required');
+            entryFeeField.required = true;
+            entryFeeField.disabled = false;
             entryFeeField.value = '';
-            
+
             console.log('✅ Switched to PAID tournament mode');
         }
-        
+
         // Update tournament preview if it exists
         if (typeof updateTournamentPreview === 'function') {
             updateTournamentPreview();
         }
     }
-    
+
     // Add event listeners
     paidRadio.addEventListener('change', toggleEntryFeeMode);
     freeRadio.addEventListener('change', toggleEntryFeeMode);
-    
+
     // Initialize with default state (paid)
     toggleEntryFeeMode();
 }
@@ -2513,66 +2516,96 @@ function initializeEntryFeeToggle() {
 // Enhanced Tournament Creation Form Handler - FIXED VERSION
 function enhancedCreateTournamentFormHandler(e) {
     e.preventDefault();
-    
+
     // PREVENT DOUBLE SUBMISSION
     if (window.isCreatingTournament) {
         console.log('Tournament creation already in progress...');
         return;
     }
-    
+
     window.isCreatingTournament = true;
     const submitBtn = e.target.querySelector('button[type="submit"]');
     const originalText = submitBtn.innerHTML;
-    
+
     try {
         // Disable button and show loading
         submitBtn.disabled = true;
         submitBtn.innerHTML = '🔄 Creating Tournament...';
-        
+
         const formData = new FormData(e.target);
-        
-        // Handle entry fee based on tournament type
+
+        // FIXED: Better handling of entry fee to prevent NaN
         let entryFee = 0;
         const tournamentType = formData.get('tournamentType');
-        
+
         if (tournamentType === 'free') {
-            entryFee = 0;
+            entryFee = 0; // Explicitly set to 0
             console.log('🎉 Creating FREE tournament (entry fee: $0)');
         } else {
-            // FIXED: Better validation for paid tournaments
             const entryFeeValue = formData.get('entry_fee');
-            entryFee = parseFloat(entryFeeValue);
             
-            if (!entryFeeValue || isNaN(entryFee) || entryFee <= 0) {
-                throw new Error('Please enter a valid entry fee amount for paid tournaments (minimum $0.01)');
+            // FIXED: Better validation and parsing to prevent NaN
+            if (entryFeeValue && entryFeeValue.trim() !== '') {
+                entryFee = parseFloat(entryFeeValue);
+                
+                // Check if parsing resulted in NaN
+                if (isNaN(entryFee) || entryFee <= 0) {
+                    throw new Error('Please enter a valid entry fee amount for paid tournaments (minimum $0.01)');
+                }
+            } else {
+                throw new Error('Entry fee is required for paid tournaments');
             }
+            
             console.log('💰 Creating PAID tournament (entry fee: $' + entryFee + ')');
         }
-        
+
+        // FIXED: Ensure all numeric values are properly parsed
+        const prizePoolValue = formData.get('prize_pool');
+        const maxParticipantsValue = formData.get('max_participants');
+        const killPointsValue = formData.get('kill_points');
+
+        const prizePool = parseFloat(prizePoolValue) || 0;
+        const maxParticipants = parseInt(maxParticipantsValue) || 0;
+        const killPoints = parseInt(killPointsValue) || 1;
+
+        // Validate required numeric fields
+        if (prizePool <= 0) {
+            throw new Error('Prize pool must be greater than 0');
+        }
+        if (maxParticipants <= 0) {
+            throw new Error('Max participants must be greater than 0');
+        }
+
         const tournamentData = {
             name: formData.get('name'),
             description: formData.get('description'),
             game_type: formData.get('game_type'),
             team_mode: formData.get('team_mode'),
-            entry_fee: entryFee, // This will be 0 for free tournaments
-            prize_pool: parseFloat(formData.get('prize_pool')),
-            max_participants: parseInt(formData.get('max_participants')),
+            entry_fee: entryFee, // This will be 0 for free tournaments, never NaN or null
+            prize_pool: prizePool,
+            max_participants: maxParticipants,
             start_date: formData.get('start_date'),
             end_date: formData.get('end_date'),
-            kill_points: parseInt(formData.get('kill_points')) || 1,
+            kill_points: killPoints,
             rank_points: formData.get('rank_points') || '{"1":10,"2":8,"3":6,"4":4,"5":2,"6":1}',
             match_type: formData.get('match_type') || 'Battle Royale'
         };
-        
+
         console.log('Creating tournament with data:', tournamentData);
-        
+
+        // FIXED: Additional validation before sending
+        if (tournamentData.entry_fee === null || isNaN(tournamentData.entry_fee)) {
+            console.error('Entry fee validation failed:', tournamentData.entry_fee);
+            throw new Error('Entry fee validation failed');
+        }
+
         // Create tournament using enhanced endpoint
         createTournamentWithAPI(tournamentData, submitBtn, originalText, e.target);
-        
+
     } catch (error) {
         console.error('Tournament creation error:', error);
         showMessage(error.message || 'Failed to create tournament', 'error');
-        
+
         // Re-enable button
         window.isCreatingTournament = false;
         submitBtn.disabled = false;
@@ -2583,6 +2616,8 @@ function enhancedCreateTournamentFormHandler(e) {
 // API call to create tournament - SAME AS BEFORE
 async function createTournamentWithAPI(tournamentData, submitBtn, originalText, form) {
     try {
+        console.log('Sending tournament data to API:', tournamentData);
+        
         const response = await fetch('/api/admin/tournaments/enhanced', {
             method: 'POST',
             headers: {
@@ -2590,24 +2625,26 @@ async function createTournamentWithAPI(tournamentData, submitBtn, originalText, 
             },
             body: JSON.stringify(tournamentData)
         });
-        
+
         const result = await response.json();
-        
+
         if (response.ok && result.success) {
-            const tournamentTypeMessage = tournamentData.entry_fee === 0 ? 
-                '🎉 FREE tournament created successfully!' : 
+            const tournamentTypeMessage = tournamentData.entry_fee === 0 ?
+                '🎉 FREE tournament created successfully!' :
                 `💰 PAID tournament created successfully! Entry fee: $${tournamentData.entry_fee}`;
-                
+
             showMessage(result.message || tournamentTypeMessage, 'success');
-            
+
             // Reset form
             form.reset();
-            
+
             // FIXED: Reinitialize toggle state after reset
             setTimeout(() => {
-                initializeEntryFeeToggle();
+                if (typeof initializeEntryFeeToggle === 'function') {
+                    initializeEntryFeeToggle();
+                }
             }, 100);
-            
+
             // Refresh data
             if (typeof loadAnalytics === 'function') {
                 loadAnalytics();
@@ -2618,6 +2655,7 @@ async function createTournamentWithAPI(tournamentData, submitBtn, originalText, 
                 }
             }
         } else {
+            console.error('API Error Response:', result);
             throw new Error(result.error || 'Failed to create tournament');
         }
     } catch (error) {
@@ -2635,7 +2673,7 @@ async function createTournamentWithAPI(tournamentData, submitBtn, originalText, 
 function validateTournamentForm() {
     const tournamentType = document.querySelector('input[name="tournamentType"]:checked')?.value;
     const entryFeeField = document.getElementById('entryFee');
-    
+
     if (tournamentType === 'paid') {
         const entryFeeValue = parseFloat(entryFeeField.value);
         if (!entryFeeValue || entryFeeValue <= 0) {
@@ -2643,8 +2681,11 @@ function validateTournamentForm() {
             entryFeeField.focus();
             return false;
         }
+    } else if (tournamentType === 'free') {
+        // For free tournaments, ensure entry fee is 0
+        entryFeeField.value = '0';
     }
-    
+
     return true;
 }
 
