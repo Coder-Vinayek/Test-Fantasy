@@ -3875,3 +3875,143 @@ margin:15px 0;
     padding: 8px !important;
     margin-bottom: 8px !important;
 }
+
+/* CSS for Enhanced Entry Fee Section */
+
+.entry-fee-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.entry-fee-toggle {
+    display: flex;
+    gap: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.entry-fee-toggle input[type="radio"] {
+    display: none;
+}
+
+.toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: #ffffff;
+    border: 2px solid #dee2e6;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    min-width: 140px;
+    justify-content: center;
+}
+
+.toggle-label:hover {
+    border-color: #007bff;
+    background: #f8f9ff;
+}
+
+.entry-fee-toggle input[type="radio"]:checked + .toggle-label {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+    box-shadow: 0 2px 4px rgba(0, 123, 255, 0.2);
+}
+
+.entry-fee-input-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.input-with-prefix {
+    display: flex;
+    align-items: center;
+    position: relative;
+}
+
+.currency-prefix {
+    position: absolute;
+    left: 12px;
+    color: #6c757d;
+    font-weight: 500;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.input-with-prefix input {
+    padding-left: 30px !important;
+}
+
+.free-tournament-message {
+    padding: 15px;
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    border: 1px solid #c3e6cb;
+    border-radius: 8px;
+    animation: fadeIn 0.3s ease;
+}
+
+.free-tournament-badge {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    color: #155724;
+}
+
+.free-icon {
+    font-size: 1.2em;
+}
+
+.free-text {
+    font-size: 1.05em;
+}
+
+.help-text {
+    color: #6c757d;
+    font-size: 0.85em;
+    margin-top: 5px;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .entry-fee-toggle {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .toggle-label {
+        min-width: auto;
+        width: 100%;
+    }
+}
+
+/* Enhanced form validation styles */
+.entry-fee-container .form-control:invalid {
+    border-color: #dc3545;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath d='m5.8 4.6 1.4 1.4-1.4 1.4'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right calc(0.375em + 0.1875rem) center;
+    background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+}
+
+.entry-fee-container .form-control:valid {
+    border-color: #28a745;
+}
