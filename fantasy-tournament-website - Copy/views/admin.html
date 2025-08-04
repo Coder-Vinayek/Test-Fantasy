@@ -229,21 +229,18 @@
                                 <div class="entry-fee-toggle">
                                     <input type="radio" id="paidTournament" name="tournamentType" value="paid" checked>
                                     <label for="paidTournament" class="toggle-label">💰 Paid Tournament</label>
-                                    
                                     <input type="radio" id="freeTournament" name="tournamentType" value="free">
                                     <label for="freeTournament" class="toggle-label">🆓 Free Tournament</label>
                                 </div>
-                                
                                 <div id="entryFeeInput" class="entry-fee-input-container">
                                     <div class="input-with-prefix">
                                         <span class="currency-prefix">$</span>
-                                        <!-- FIXED: Removed required attribute from HTML - JavaScript will handle it -->
-                                        <input type="number" id="entryFee" name="entry_fee" 
+                                        <!-- FIXED: Completely removed required attribute from HTML -->
+                                        <input type="number" id="entryFee" name="entry_fee"
                                                min="0.01" step="0.01" placeholder="5.00">
                                     </div>
                                     <small class="help-text">Minimum entry fee: $0.01</small>
                                 </div>
-                                
                                 <div id="freeTournamentMessage" class="free-tournament-message" style="display: none;">
                                     <div class="free-tournament-badge">
                                         <span class="free-icon">🎉</span>
