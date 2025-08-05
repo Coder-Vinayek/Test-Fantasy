@@ -4308,272 +4308,192 @@ body{
 .header *{
     color:white !important;
 }
-
-/* Button Size Fixes for Fantasy Tournament Website */
-
-/* Header Navigation Buttons - Make smaller */
-.nav a {
-    padding: 0.6rem 1.2rem; /* Reduced from 0.8rem 1.5rem */
-    font-size: 0.9rem; /* Slightly smaller font */
+.nav a{
+    padding:0.6rem 1.2rem;
+    font-size:0.9rem;
+}
+#logoutBtn.btn.btn-small{
+    padding:0.5rem 1rem !important;
+    font-size:0.8rem !important;
+}
+.btn{
+    padding:0.8rem 2rem;
+    font-size:0.9rem;
 }
 
-/* Logout Button in Header */
-#logoutBtn.btn.btn-small {
-    padding: 0.5rem 1rem !important;
-    font-size: 0.8rem !important;
+.btn-small{
+    padding:0.5rem 1.2rem;
+    font-size:0.8rem;
 }
-
-/* Main Action Buttons - Make smaller */
-.btn {
-    padding: 0.8rem 2rem; /* Reduced from 1rem 2.5rem */
-    font-size: 0.9rem; /* Reduced from 1rem */
+.view-lobby-btn{
+    padding:0.6rem 1.5rem;
+    font-size:0.85rem;
 }
-
-.btn-small {
-    padding: 0.5rem 1.2rem; /* Reduced from 0.6rem 1.5rem */
-    font-size: 0.8rem; /* Reduced from 0.9rem */
+#clearFilters.btn.btn-secondary{
+    padding:0.5rem 1rem !important;
+    font-size:0.8rem !important;
 }
-
-/* Tournament Page Buttons */
-.view-lobby-btn, .tournaments-toggle-btn {
-    padding: 0.6rem 1.5rem; /* Smaller padding */
-    font-size: 0.85rem;
-}
-
-/* Filter Buttons in Tournament Page */
-#clearFilters.btn.btn-secondary {
-    padding: 0.5rem 1rem !important;
-    font-size: 0.8rem !important;
-}
-
-/* Registered Button - Make Green and Smaller */
 .btn.registered, 
 .tournament-card .btn[disabled],
-.registered-status,
-.btn:disabled[data-status="registered"],
 button[disabled]:contains("Registered"),
-button:disabled:contains("✓ Registered") {
-    background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
-    color: white !important;
-    padding: 0.6rem 1.5rem !important;
-    font-size: 0.85rem !important;
-    border: none !important;
-    opacity: 1 !important;
+button:disabled:contains("✓ Registered"){
+    background:linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+    color:white !important;
+    padding:0.6rem 1.5rem !important;
+    font-size:0.85rem !important;
+    border:none !important;
+    opacity:1 !important;
 }
 
-.btn.registered:hover {
-    background: linear-gradient(135deg, #218838 0%, #1c7430 100%) !important;
+.btn.registered:hover{
+    background:linear-gradient(135deg, #218838 0%, #1c7430 100%) !important;
 }
-
-/* Tournament Card Buttons - Make all smaller */
-.tournament-card .btn {
-    padding: 0.6rem 1.5rem !important;
-    font-size: 0.85rem !important;
+.tournament-card .btn{
+    padding:0.6rem 1.5rem !important;
+    font-size:0.85rem !important;
 }
-
-/* Admin Dashboard Buttons - Make smaller */
 .update-winnings-btn, 
-.ban-user-btn, 
 .ban-action-btn,
 button:contains("Update Winnings"),
 button:contains("Ban User"),
-button:contains("Unban User") {
-    padding: 0.5rem 1rem !important; /* Reduced padding */
-    font-size: 0.8rem !important; /* Smaller font */
+button:contains("Unban User"){
+    padding:0.5rem 1rem !important;
+    font-size:0.8rem !important;
 }
-
-/* Tournament Actions Buttons in Admin */
-.tournament-actions-group .btn {
-    padding: 0.5rem 1rem !important; /* Smaller padding */
-    font-size: 0.75rem !important; /* Smaller font */
-    max-width: 150px !important; /* Reduced from 180px */
+.tournament-actions-group .btn{
+    padding:0.5rem 1rem !important;
+    font-size:0.75rem !important;
+    max-width:150px !important;
 }
-
-/* View Participants Button */
-.view-participants-btn {
-    padding: 0.5rem 1rem !important;
-    font-size: 0.8rem !important;
+.view-participants-btn{
+    padding:0.5rem 1rem !important;
+    font-size:0.8rem !important;
 }
-
-/* Delete Tournament Button */
-.delete-tournament-btn {
-    padding: 0.5rem 1rem !important;
-    font-size: 0.8rem !important;
+.delete-tournament-btn{
+    padding:0.5rem 1rem !important;
+    font-size:0.8rem !important;
 }
-
-/* Admin Tab Buttons */
-.admin-tabs .tab-btn {
-    padding: 0.8rem 1.2rem; /* Reduced from 1rem 1.5rem */
-    font-size: 0.9rem;
+.admin-tabs .tab-btn{
+    padding:0.8rem 1.2rem;
+    font-size:0.9rem;
 }
-
-/* Tournament Card Status Buttons */
-.tournament-status {
-    padding: 0.4rem 0.8rem; /* Reduced from 0.5rem 1rem */
-    font-size: 0.8rem; /* Reduced from 0.9rem */
+.tournament-status{
+    padding:0.4rem 0.8rem;
+    font-size:0.8rem;
 }
-
-/* Balance Update and Action Buttons */
-.action-btn {
-    padding: 0.8rem 1.5rem; /* Reduced from 1rem 2rem */
-    font-size: 0.9rem; /* Reduced from 1rem */
+.action-btn{
+    padding:0.8rem 1.5rem;
+    font-size:0.9rem;
 }
-
-/* Quick Amount Buttons in Wallet */
-.quick-amount-btn {
-    padding: 0.6rem 1rem; /* Reduced from 8px 12px to rem */
-    font-size: 0.8rem; /* Reduced from 0.9rem */
+.quick-amount-btn{
+    padding:0.6rem 1rem;
+    font-size:0.8rem;
 }
-
-/* Create Tournament Button */
-.create-tournament-btn {
-    padding: 0.8rem 2rem !important;
-    font-size: 0.9rem !important;
+.create-tournament-btn{
+    padding:0.8rem 2rem !important;
+    font-size:0.9rem !important;
 }
-
-/* Management Panel Buttons */
 .match-details-btn,
 .announcement-btn,
-.action-btn {
-    padding: 0.6rem 1.5rem !important;
-    font-size: 0.85rem !important;
+.action-btn{
+    padding:0.6rem 1.5rem !important;
+    font-size:0.85rem !important;
 }
-
-/* Specific Mobile Optimizations */
-@media (max-width: 768px) {
-    
-    /* Header buttons on mobile */
-    .nav a {
-        padding: 0.5rem 1rem;
-        font-size: 0.85rem;
+@media (max-width: 768px){
+    .nav a{
+        padding:0.5rem 1rem;
+        font-size:0.85rem;
     }
-    
-    /* Logout button on mobile */
-    #logoutBtn.btn.btn-small {
-        padding: 0.4rem 0.8rem !important;
-        font-size: 0.75rem !important;
+    #logoutBtn.btn.btn-small{
+        padding:0.4rem 0.8rem !important;
+        font-size:0.75rem !important;
     }
-    
-    /* Main buttons on mobile */
-    .btn {
-        padding: 0.7rem 1.5rem;
-        font-size: 0.85rem;
+    .btn{
+        padding:0.7rem 1.5rem;
+        font-size:0.85rem;
     }
-    
-    /* Small buttons on mobile */
-    .btn-small {
-        padding: 0.4rem 1rem;
-        font-size: 0.75rem;
+    .btn-small{
+        padding:0.4rem 1rem;
+        font-size:0.75rem;
     }
-    
-    /* Tournament card buttons on mobile */
-    .tournament-card .btn {
-        padding: 0.5rem 1.2rem !important;
-        font-size: 0.8rem !important;
+    .tournament-card .btn{
+        padding:0.5rem 1.2rem !important;
+        font-size:0.8rem !important;
     }
-    
-    /* Tournament action buttons on mobile */
-    .tournament-actions-group .btn {
-        padding: 0.4rem 0.8rem !important;
-        font-size: 0.7rem !important;
-        max-width: 120px !important;
+    .tournament-actions-group .btn{
+        padding:0.4rem 0.8rem !important;
+        font-size:0.7rem !important;
+        max-width:120px !important;
     }
-    
-    /* Admin buttons on mobile */
-    .update-winnings-btn, .ban-user-btn, .ban-action-btn {
-        padding: 0.4rem 0.8rem !important;
-        font-size: 0.75rem !important;
+    .update-winnings-btn, .ban-action-btn{
+        padding:0.4rem 0.8rem !important;
+        font-size:0.75rem !important;
     }
-    
-    /* Registered button on mobile */
-    .btn.registered {
-        padding: 0.5rem 1.2rem !important;
-        font-size: 0.8rem !important;
+    .btn.registered{
+        padding:0.5rem 1.2rem !important;
+        font-size:0.8rem !important;
     }
-    
-    /* Admin tab buttons on mobile */
-    .admin-tabs .tab-btn {
-        padding: 0.6rem 1rem;
-        font-size: 0.8rem;
+    .admin-tabs .tab-btn{
+        padding:0.6rem 1rem;
+        font-size:0.8rem;
     }
-    
-    /* Filter buttons on mobile */
-    #clearFilters.btn.btn-secondary {
-        padding: 0.4rem 0.8rem !important;
-        font-size: 0.75rem !important;
+    #clearFilters.btn.btn-secondary{
+        padding:0.4rem 0.8rem !important;
+        font-size:0.75rem !important;
     }
-    
-    /* Management panel buttons on mobile */
     .match-details-btn,
     .announcement-btn,
-    .action-btn {
-        padding: 0.5rem 1.2rem !important;
-        font-size: 0.8rem !important;
+    .action-btn{
+        padding:0.5rem 1.2rem !important;
+        font-size:0.8rem !important;
     }
 }
-
-/* Ensure registered status maintains green color in all states */
 .btn.registered,
 .btn.registered:hover,
 .btn.registered:active,
 .btn.registered:focus,
-.btn.registered:disabled {
-    background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
-    color: white !important;
-    border-color: #28a745 !important;
+.btn.registered:disabled{
+    background:linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+    color:white !important;
+    border-color:#28a745 !important;
 }
-
-/* Fix for any tournament status that shows "registered" */
-.tournament-status.registered,
-.status-registered {
-    background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
-    color: white !important;
+.tournament-status.registered{
+    background:linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+    color:white !important;
 }
-
-/* Target buttons with "Registered" text */
 button:disabled:contains("Registered"),
 button[disabled*="Registered"],
 .btn:disabled[title*="registered"],
-.btn:disabled[alt*="registered"] {
-    background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
-    color: white !important;
-    padding: 0.6rem 1.5rem !important;
-    font-size: 0.85rem !important;
-    border: none !important;
-    opacity: 1 !important;
+.btn:disabled[alt*="registered"]{
+    background:linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+    color:white !important;
+    padding:0.6rem 1.5rem !important;
+    font-size:0.85rem !important;
+    border:none !important;
+    opacity:1 !important;
 }
 
-/* Additional targeting for dynamically generated registered buttons */
-[data-status="registered"],
-[data-state="registered"],
-.registered,
-.tournament-registered {
-    background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
-    color: white !important;
+.registered{
+    background:linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+    color:white !important;
 }
-
-/* Specific targeting for tournament cards with registered status */
 .tournament-card button:disabled,
-.tournament-card .btn:disabled {
-    background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
-    color: white !important;
-    padding: 0.6rem 1.5rem !important;
-    font-size: 0.85rem !important;
+.tournament-card .btn:disabled{
+    background:linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+    color:white !important;
+    padding:0.6rem 1.5rem !important;
+    font-size:0.85rem !important;
 }
-
-/* Force smaller size for all admin action buttons */
 .admin-table .btn,
 .admin-table button,
 table .btn,
-table button {
-    padding: 0.5rem 1rem !important;
-    font-size: 0.8rem !important;
+table button{
+    padding:0.5rem 1rem !important;
+    font-size:0.8rem !important;
 }
-
-/* Tournament management buttons */
 .btn-info,
 .btn-warning, 
-.btn-secondary {
-    padding: 0.6rem 1.5rem !important;
-    font-size: 0.85rem !important;
+.btn-secondary{
+    padding:0.6rem 1.5rem !important;
+    font-size:0.85rem !important;
 }
