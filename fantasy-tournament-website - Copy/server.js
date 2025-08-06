@@ -2185,7 +2185,7 @@ app.post('/api/admin/tournaments/enhanced', requireAdmin, async (req, res) => {
         match_type
     } = req.body;
 
-    if (!name || !game_type || !team_mode || entry_fee === undefined || !prize_pool || !max_participants || !start_date) {
+    if (!name || !game_type || !team_mode || entry_fee === undefined || prize_pool === undefined || !max_participants || !start_date) {
         return res.status(400).json({ error: 'Required fields missing' });
     }
 
@@ -2201,13 +2201,34 @@ app.post('/api/admin/tournaments/enhanced', requireAdmin, async (req, res) => {
         return res.status(400).json({ error: 'Invalid team mode' });
     }
 
-    // ENHANCED: Validate entry fee (allow 0 for free tournaments)
+    // FIXED: Validate entry fee (allow 0 for free tournaments)
     const entryFeeValue = parseFloat(entry_fee);
-    if (entryFeeValue < 0) {
+    if (isNaN(entryFeeValue) || entryFeeValue < 0) {
+        console.log('❌ Entry fee validation failed:', entry_fee, 'parsed as:', entryFeeValue);
         return res.status(400).json({ error: 'Entry fee cannot be negative' });
     }
 
-    console.log('Creating tournament with entry fee:', entryFeeValue);
+    console.log('✅ Entry fee validation passed:', {
+        original: entry_fee,
+        parsed: entryFeeValue,
+        type: typeof entry_fee
+    });
+    
+
+    // FIXED: Validate prize pool (allow 0 for free tournaments)
+    const prizePoolValue = parseFloat(prize_pool);
+    if (isNaN(prizePoolValue) || prizePoolValue < 0) {
+        console.log('❌ Prize pool validation failed:', prize_pool, 'parsed as:', prizePoolValue);
+        return res.status(400).json({ error: 'Prize pool cannot be negative' });
+    }
+
+    console.log('✅ Prize pool validation passed:', {
+        original: prize_pool,
+        parsed: prizePoolValue,
+        type: typeof prize_pool
+    });
+
+    console.log('Creating tournament with entry fee:', entryFeeValue, 'and prize pool:', prizePoolValue);
 
     try {
         const { data, error } = await supabase
@@ -2217,8 +2238,8 @@ app.post('/api/admin/tournaments/enhanced', requireAdmin, async (req, res) => {
                 description: description || `${game_type} ${team_mode} tournament`,
                 game_type,
                 team_mode,
-                entry_fee: entryFeeValue, // This can be 0 for free tournaments
-                prize_pool: parseFloat(prize_pool),
+                entry_fee: entryFeeValue,
+                prize_pool: prizePoolValue, // Can now be 0
                 max_participants: parseInt(max_participants),
                 start_date,
                 end_date: end_date || start_date,
@@ -2237,8 +2258,8 @@ app.post('/api/admin/tournaments/enhanced', requireAdmin, async (req, res) => {
             return res.status(500).json({ error: 'Failed to create tournament' });
         }
 
-        const tournamentTypeMessage = entryFeeValue === 0 ? 
-            `Free tournament "${name}" created successfully!` : 
+        const tournamentTypeMessage = entryFeeValue === 0 ?
+            `Free tournament "${name}" created successfully!` :
             `Paid tournament "${name}" created successfully with $${entryFeeValue} entry fee!`;
 
         res.json({
