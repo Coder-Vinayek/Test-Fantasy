@@ -326,15 +326,16 @@ document.addEventListener('DOMContentLoaded', function () {
     function createTransactionItem(transaction) {
         const item = document.createElement('div');
         item.className = 'transaction-item';
-
-        const date = new Date(transaction.transaction_date);
-        const formattedDate = date.toLocaleDateString('en-IN') + ' ' + 
-                             date.toLocaleTimeString('en-IN', { 
-                                 hour: '2-digit', 
-                                 minute: '2-digit' 
-                             });
         
-        const typeClass = `transaction-type-${transaction.transaction_type}`;
+        const date = new Date(transaction.transaction_date);
+        const formattedDate = date.toLocaleDateString('en-IN') + ' ' +
+            date.toLocaleTimeString('en-IN', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        
+        // Enhanced type styling with colors
+        const typeClass = 'transaction-type-' + transaction.transaction_type;
         const amountPrefix = transaction.transaction_type === 'credit' ? '+' : '-';
         
         // Enhanced balance type display
@@ -342,7 +343,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (transaction.balance_type === 'combined') {
             balanceTypeDisplay = 'WALLET+WINNINGS';
         }
-
+        
         // Enhanced description with icons
         let description = transaction.description;
         if (description.includes('deposit')) {
@@ -354,15 +355,25 @@ document.addEventListener('DOMContentLoaded', function () {
         } else if (description.includes('winnings')) {
             description = '🏆 ' + description;
         }
-
-        item.innerHTML = `
-            <div class="${typeClass}">${transaction.transaction_type.toUpperCase()}</div>
-            <div class="${typeClass}">${amountPrefix}₹${parseFloat(transaction.amount).toFixed(2)}</div>
-            <div>${balanceTypeDisplay}</div>
-            <div>${formattedDate}</div>
-            <div>${description}</div>
-        `;
-
+        
+        // Create colored content
+        item.innerHTML = 
+            '<div class="' + typeClass + '">' + transaction.transaction_type.toUpperCase() + '</div>' +
+            '<div class="' + typeClass + '">' + amountPrefix + '₹' + parseFloat(transaction.amount).toFixed(2) + '</div>' +
+            '<div>' + balanceTypeDisplay + '</div>' +
+            '<div>' + formattedDate + '</div>' +
+            '<div>' + description + '</div>';
+        
+        // Add mobile labels for responsive design
+        const divs = item.querySelectorAll('div');
+        if (divs.length >= 5) {
+            divs[0].setAttribute('data-label', 'Type');
+            divs[1].setAttribute('data-label', 'Amount');
+            divs[2].setAttribute('data-label', 'Balance');
+            divs[3].setAttribute('data-label', 'Date');
+            divs[4].setAttribute('data-label', 'Description');
+        }
+        
         return item;
     }
 
