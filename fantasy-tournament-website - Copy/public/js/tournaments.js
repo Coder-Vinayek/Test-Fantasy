@@ -269,9 +269,7 @@ function createTournamentCard(tournament) {
     return card;
 }
 
-/**
- * Create action button based on tournament state
- */
+// Create action button based on tournament state
 function createActionButton(tournament, isRegistered, isFull) {
     if (isRegistered) {
         return '<button class="btn btn-success btn-block" disabled>✓ Registered</button>' +
@@ -291,9 +289,7 @@ function createActionButton(tournament, isRegistered, isFull) {
            'Register Now</button>';
 }
 
-/**
- * Setup event listeners for tournament card
- */
+// Setup event listeners for tournament card
 function setupCardEventListeners(card, tournament) {
     // Register button
     const registerBtn = card.querySelector('.register-btn');
@@ -319,9 +315,7 @@ function setupCardEventListeners(card, tournament) {
     });
 }
 
-/**
- * ENHANCED: Open registration modal based on tournament type
- */
+// ENHANCED: Open registration modal based on tournament type
 function openRegistrationModal(tournament) {
     console.log('Opening registration modal for tournament:', tournament);
     
@@ -352,9 +346,7 @@ function openRegistrationModal(tournament) {
     registerForTournament(tournament.id, 'solo');
 }
 
-/**
- * ENHANCED: Show team registration modal for duo/squad
- */
+// ENHANCED: Show team registration modal for duo/squad
 function showTeamRegistrationModal(tournament) {
     const isSquad = tournament.team_mode === 'squad';
     const modalId = isSquad ? 'squadRegistrationModal' : 'duoRegistrationModal';
@@ -383,9 +375,7 @@ function showTeamRegistrationModal(tournament) {
     fillCurrentUserData();
 }
 
-/**
- * Create team registration HTML
- */
+// Create team registration HTML
 function createTeamRegistrationHTML(tournament, isSquad) {
     const teamType = isSquad ? 'Squad' : 'Duo';
     const playerCount = isSquad ? '4 main players + 1 substitute' : '2 players';
@@ -397,9 +387,7 @@ function createTeamRegistrationHTML(tournament, isSquad) {
     }
 }
 
-/**
- * Create duo registration HTML
- */
+// Create duo registration HTML
 function createDuoRegistrationHTML(tournament) {
     return '<div class="modal-overlay">' +
            '<div class="modal-content">' +
@@ -446,9 +434,7 @@ function createDuoRegistrationHTML(tournament) {
            '</div>';
 }
 
-/**
- * Create squad registration HTML
- */
+// Create squad registration HTML
 function createSquadRegistrationHTML(tournament) {
     return '<div class="modal-overlay">' +
            '<div class="modal-content squad-modal">' +
@@ -504,9 +490,7 @@ function createSquadRegistrationHTML(tournament) {
            '</div>';
 }
 
-/**
- * Create individual squad player HTML
- */
+// Create individual squad player HTML
 function createSquadPlayerHTML(playerNum) {
     return '<div class="form-section">' +
            '<h4>Player ' + playerNum + '</h4>' +
@@ -522,9 +506,7 @@ function createSquadPlayerHTML(playerNum) {
            '</div>';
 }
 
-/**
- * Setup team modal event listeners
- */
+// Setup team modal event listeners
 function setupTeamModalEventListeners(modal, tournament, isSquad) {
     // Form submission
     const form = modal.querySelector('form');
@@ -572,9 +554,7 @@ function setupTeamModalEventListeners(modal, tournament, isSquad) {
     });
 }
 
-/**
- * Validate username exists
- */
+// Validate username exists
 async function validateUsername(username, feedbackElementId) {
     const feedbackElement = document.getElementById(feedbackElementId);
     if (!feedbackElement) return;
@@ -612,9 +592,7 @@ async function validateUsername(username, feedbackElementId) {
     }
 }
 
-/**
- * Handle duo registration
- */
+// Handle duo registration
 async function handleDuoRegistration(tournament) {
     const form = document.getElementById('duoRegistrationForm');
     const submitBtn = document.getElementById('duoSubmitBtn');
@@ -699,9 +677,7 @@ async function handleDuoRegistration(tournament) {
     }
 }
 
-/**
- * Handle squad registration
- */
+//   Handle squad registration - FIXED VERSION
 async function handleSquadRegistration(tournament) {
     const form = document.getElementById('squadRegistrationForm');
     const submitBtn = document.getElementById('squadSubmitBtn');
@@ -721,14 +697,21 @@ async function handleSquadRegistration(tournament) {
             throw new Error('Please enter a team name');
         }
         
-        // Collect all players data
+        // Collect all players data - FIXED VERSION
         const players = [];
         const usernamesToValidate = [];
         
-        // Add team leader (player 1)
+        // Add team leader (player 1) - Always required
+        const player1Username = formData.get('player1Username');
+        const player1IGN = formData.get('player1IGN');
+        
+        if (!player1IGN || !player1IGN.trim()) {
+            throw new Error('Please enter your IGN (Player 1)');
+        }
+        
         players.push({
-            username: formData.get('player1Username'),
-            ign: formData.get('player1IGN'),
+            username: player1Username,
+            ign: player1IGN.trim(),
             role: 'leader'
         });
         
@@ -737,7 +720,7 @@ async function handleSquadRegistration(tournament) {
             const username = formData.get('player' + i + 'Username');
             const ign = formData.get('player' + i + 'IGN');
             
-            if (!username || !ign) {
+            if (!username || !username.trim() || !ign || !ign.trim()) {
                 throw new Error('Please fill in all required player information (Players 1-4)');
             }
             
@@ -754,6 +737,7 @@ async function handleSquadRegistration(tournament) {
         const player5Username = formData.get('player5Username');
         const player5IGN = formData.get('player5IGN');
         
+        // Only add substitute if username is provided
         if (player5Username && player5Username.trim()) {
             if (!player5IGN || !player5IGN.trim()) {
                 throw new Error('Please enter IGN for substitute player');
@@ -768,7 +752,16 @@ async function handleSquadRegistration(tournament) {
             usernamesToValidate.push(player5Username.trim());
         }
         
-        // Validate all usernames exist
+        console.log('Squad players collected:', players);
+        console.log('Total players:', players.length);
+        console.log('Usernames to validate:', usernamesToValidate);
+        
+        // Validate squad has correct number of players (4-5)
+        if (players.length < 4 || players.length > 5) {
+            throw new Error('Squad must have 4 main players and optionally 1 substitute');
+        }
+        
+        // Validate all teammate usernames exist (exclude team leader)
         if (usernamesToValidate.length > 0) {
             const validationResponse = await fetch('/api/validate-usernames', {
                 method: 'POST',
@@ -828,9 +821,7 @@ async function handleSquadRegistration(tournament) {
     }
 }
 
-/**
- * Fill current user's data automatically
- */
+//  Fill current user's data automatically
 function fillCurrentUserData() {
     if (state.currentUser) {
         const usernameField = document.getElementById('player1Username');
@@ -840,9 +831,7 @@ function fillCurrentUserData() {
     }
 }
 
-/**
- * Close registration modal
- */
+//  Close registration modal
 function closeRegistrationModal() {
     const modals = document.querySelectorAll('.registration-modal');
     modals.forEach(function(modal) {
@@ -853,9 +842,7 @@ function closeRegistrationModal() {
 // Make closeRegistrationModal globally available
 window.closeRegistrationModal = closeRegistrationModal;
 
-/**
- * ENHANCED: Register for tournament with type support
- */
+// ENHANCED: Register for tournament with type support
 async function registerForTournament(tournamentId, registrationType) {
     try {
         showMessage('Processing registration...', 'info');
@@ -887,9 +874,7 @@ async function registerForTournament(tournamentId, registrationType) {
     }
 }
 
-/**
- * Apply filters to tournaments
- */
+// Apply filters to tournaments
 function applyFilters() {
     const gameFilter = (elements.gameFilter && elements.gameFilter.value) || 'all';
     const modeFilter = (elements.modeFilter && elements.modeFilter.value) || 'all';
@@ -906,9 +891,7 @@ function applyFilters() {
     renderTournaments();
 }
 
-/**
- * Clear all filters
- */
+// Clear all filters
 function clearAllFilters() {
     if (elements.gameFilter) elements.gameFilter.value = 'all';
     if (elements.modeFilter) elements.modeFilter.value = 'all';
@@ -917,9 +900,7 @@ function clearAllFilters() {
     renderTournaments();
 }
 
-/**
- * Load user information
- */
+// Load user information
 async function loadUserInfo() {
     try {
         const response = await fetch('/api/user');
@@ -943,9 +924,7 @@ async function loadUserInfo() {
     }
 }
 
-/**
- * Handle logout
- */
+// Handle logout
 async function handleLogout() {
     try {
         const response = await fetch('/api/logout', { method: 'POST' });
@@ -958,16 +937,12 @@ async function handleLogout() {
     }
 }
 
-/**
- * Show tournament details modal (optional feature)
- */
+// Show tournament details modal (optional feature)
 function showTournamentDetails(tournament) {
     console.log('Tournament details:', tournament);
 }
 
-/**
- * Utility functions
- */
+// Utility functions
 function formatDate(dateString) {
     try {
         return new Date(dateString).toLocaleDateString();
@@ -990,9 +965,7 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-/**
- * UI state management
- */
+// UI state management
 function showLoading() {
     if (elements.loadingState) elements.loadingState.style.display = 'block';
     if (elements.tournamentsGrid) elements.tournamentsGrid.style.display = 'none';
