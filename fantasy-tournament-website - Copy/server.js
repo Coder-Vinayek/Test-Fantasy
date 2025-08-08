@@ -2561,7 +2561,7 @@ async function handleTeamRegistration(req, res, tournament, registrationType, te
     }
 
     const isSquad = registrationType === 'squad';
-    const expectedSize = isSquad ? 4 : 2; // duo = 2, squad = 4
+    let expectedSize = isSquad ? 4 : 2; // Initial size, will be adjusted for squad
 
     // Validate team data structure
     if (isSquad) {
@@ -2569,9 +2569,14 @@ async function handleTeamRegistration(req, res, tournament, registrationType, te
         if (!teamName || !players || !Array.isArray(players)) {
             return res.status(400).json({ error: 'Invalid squad data' });
         }
-        if (players.length !== 5) { // 4 main + 1 substitute
-            return res.status(400).json({ error: 'Squad must have exactly 5 players (4 main + 1 substitute)' });
+        
+        // FIXED: Allow 4-5 players (4 required + 1 optional substitute)
+        if (players.length < 4 || players.length > 5) {
+            return res.status(400).json({ error: 'Squad must have 4 main players and optionally 1 substitute' });
         }
+        
+        // Update expectedSize based on actual players
+        expectedSize = players.length;
     } else {
         // Duo validation
         const { playerData } = teamData;
@@ -2595,23 +2600,48 @@ async function handleTeamRegistration(req, res, tournament, registrationType, te
     let teamName = '';
 
     if (isSquad) {
-        // Squad processing
+        // Squad processing - FIXED VERSION
         teamName = teamData.teamName;
-        const playerUsernames = teamData.players.map(p => p.username).filter(u => u && u.trim());
-
-        // Validate all usernames exist
-        const { data: memberUsers, error: memberError } = await supabase
-            .from('users')
-            .select('id, username')
-            .in('username', playerUsernames);
-
-        if (memberError || memberUsers.length !== playerUsernames.length) {
-            const foundUsernames = memberUsers ? memberUsers.map(u => u.username) : [];
-            const notFound = playerUsernames.filter(u => !foundUsernames.includes(u));
-            return res.status(400).json({ error: `Users not found: ${notFound.join(', ')}` });
+        
+        // Filter usernames - only include non-empty ones
+        const playerUsernames = [];
+        for (let i = 0; i < teamData.players.length; i++) {
+            const player = teamData.players[i];
+            if (player.username && player.username.trim()) {
+                playerUsernames.push(player.username.trim());
+            }
         }
+        
+        console.log('Squad player usernames to validate:', playerUsernames);
 
-        allTeamMembers = [userId, ...memberUsers.map(u => u.id)];
+        // The first username should be the team leader, so we skip it for validation
+        const teamMemberUsernames = playerUsernames.slice(1);
+        
+        if (teamMemberUsernames.length > 0) {
+            // Validate all usernames exist (except team leader)
+            const { data: memberUsers, error: memberError } = await supabase
+                .from('users')
+                .select('id, username')
+                .in('username', teamMemberUsernames);
+
+            if (memberError || memberUsers.length !== teamMemberUsernames.length) {
+                const foundUsernames = memberUsers ? memberUsers.map(function(u) { return u.username; }) : [];
+                const notFound = teamMemberUsernames.filter(function(u) { return !foundUsernames.includes(u); });
+                return res.status(400).json({ error: 'Users not found: ' + notFound.join(', ') });
+            }
+
+            // Create team members array: [leader_id, ...member_ids]
+            allTeamMembers = [userId];
+            memberUsers.forEach(function(user) {
+                allTeamMembers.push(user.id);
+            });
+        } else {
+            // Only team leader (shouldn't happen but handle gracefully)
+            allTeamMembers = [userId];
+        }
+        
+        console.log('Squad team members:', allTeamMembers);
+        
     } else {
         // Duo processing
         const teammateUsername = teamData.playerData.teammate.username;
@@ -2631,7 +2661,7 @@ async function handleTeamRegistration(req, res, tournament, registrationType, te
         }
 
         allTeamMembers = [userId, teammate.id];
-        teamName = `${leader.username} & ${teammate.username}`;
+        teamName = leader.username + ' & ' + teammate.username;
     }
 
     // Check if any team member is already registered
@@ -2662,7 +2692,7 @@ async function handleTeamRegistration(req, res, tournament, registrationType, te
 
         if (totalBalance < totalEntryFee) {
             return res.status(400).json({
-                error: `Insufficient balance. Need ₹${totalEntryFee} for team registration`
+                error: 'Insufficient balance. Need ₹' + totalEntryFee + ' for team registration'
             });
         }
 
@@ -2695,7 +2725,7 @@ async function handleTeamRegistration(req, res, tournament, registrationType, te
                 transaction_type: 'debit',
                 amount: totalEntryFee,
                 balance_type: 'tournament',
-                description: `${registrationType.charAt(0).toUpperCase() + registrationType.slice(1)} registration: ${tournament.name} (${teamName})`
+                description: registrationType.charAt(0).toUpperCase() + registrationType.slice(1) + ' registration: ' + tournament.name + ' (' + teamName + ')'
             }]);
     }
 
@@ -2705,8 +2735,7 @@ async function handleTeamRegistration(req, res, tournament, registrationType, te
         team_leader_id: userId,
         team_name: teamName,
         team_members: allTeamMembers,
-        team_size: expectedSize,
-        registration_type: registrationType
+        team_size: expectedSize
     };
 
     if (isSquad) {
@@ -2721,16 +2750,18 @@ async function handleTeamRegistration(req, res, tournament, registrationType, te
 
     if (teamRegError) {
         console.error('Team registration error:', teamRegError);
-        return res.status(500).json({ error: 'Team registration failed' });
+        return res.status(500).json({ error: 'Team registration failed: ' + teamRegError.message });
     }
 
     // Register all team members individually
-    const registrations = allTeamMembers.map(memberId => ({
-        user_id: memberId,
-        tournament_id: tournament.id,
-        registration_type: registrationType,
-        team_leader_id: userId
-    }));
+    const registrations = allTeamMembers.map(function(memberId) {
+        return {
+            user_id: memberId,
+            tournament_id: tournament.id,
+            registration_type: registrationType,
+            team_leader_id: userId
+        };
+    });
 
     const { error: memberRegError } = await supabase
         .from('tournament_registrations')
@@ -2738,7 +2769,7 @@ async function handleTeamRegistration(req, res, tournament, registrationType, te
 
     if (memberRegError) {
         console.error('Member registration error:', memberRegError);
-        return res.status(500).json({ error: 'Failed to register team members' });
+        return res.status(500).json({ error: 'Failed to register team members: ' + memberRegError.message });
     }
 
     // Update tournament participant count
@@ -2748,8 +2779,8 @@ async function handleTeamRegistration(req, res, tournament, registrationType, te
         .eq('id', tournament.id);
 
     const message = tournament.entry_fee === 0
-        ? `Team "${teamName}" registered successfully for free tournament!`
-        : `Team "${teamName}" registered successfully for ₹${totalEntryFee}`;
+        ? 'Team "' + teamName + '" registered successfully for free tournament!'
+        : 'Team "' + teamName + '" registered successfully for ₹' + totalEntryFee;
 
     res.json({
         success: true,
