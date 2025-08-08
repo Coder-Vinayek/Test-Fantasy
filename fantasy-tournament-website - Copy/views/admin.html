@@ -72,17 +72,17 @@
 
                     <div class="metric-card revenue-card">
                         <div class="metric-label">Total Revenue</div>
-                        <div class="metric-value">$<span id="totalRevenue">0</span></div>
+                        <div class="metric-value">    ₹<span id="totalRevenue">0</span></div>
                         <div class="metric-change">
-                            Entry fees: $<span id="entryFees">0</span>
+                            Entry fees:    ₹<span id="entryFees">0</span>
                         </div>
                     </div>
 
                     <div class="metric-card profit-card">
                         <div class="metric-label">Total Profit</div>
-                        <div class="metric-value">$<span id="totalProfit">0</span></div>
+                        <div class="metric-value">    ₹<span id="totalProfit">0</span></div>
                         <div class="metric-change">
-                            Withdrawals: $<span id="totalWithdrawals">0</span>
+                            Withdrawals:    ₹<span id="totalWithdrawals">0</span>
                         </div>
                     </div>
 
@@ -222,7 +222,7 @@
                         </div>
                         <div class="form-group">
                             <label for="entryFee" class="form-label">
-                                Entry Fee ($):
+                                Entry Fee (    ₹):
                                 <span class="required">*</span>
                             </label>
                             <div class="entry-fee-container">
@@ -234,12 +234,12 @@
                                 </div>
                                 <div id="entryFeeInput" class="entry-fee-input-container">
                                     <div class="input-with-prefix">
-                                        <span class="currency-prefix">$</span>
+                                        <span class="currency-prefix">    ₹</span>
                                         <!-- FIXED: Completely removed required attribute from HTML -->
                                         <input type="number" id="entryFee" name="entry_fee"
                                                min="0.01" step="0.01" placeholder="5.00">
                                     </div>
-                                    <small class="help-text">Minimum entry fee: $0.01</small>
+                                    <small class="help-text">Minimum entry fee:     ₹0.01</small>
                                 </div>
                                 <div id="freeTournamentMessage" class="free-tournament-message" style="display: none;">
                                     <div class="free-tournament-badge">
@@ -400,7 +400,7 @@
                                 </div>
                                 <div class="overview-item">
                                     <span class="overview-label">Prize Pool:</span>
-                                    <span id="manageTournamentPrize" class="overview-value">$0</span>
+                                    <span id="manageTournamentPrize" class="overview-value">    ₹0</span>
                                 </div>
                             </div>
                         </div>
@@ -524,7 +524,7 @@
                     <form id="updateWinningsForm" class="form">
                         <input type="hidden" id="selectedUserId">
                         <div class="form-group">
-                            <label for="winningsAmount">Winnings Amount ($):</label>
+                            <label for="winningsAmount">Winnings Amount (    ₹):</label>
                             <input type="number" id="winningsAmount" name="amount" min="0.01" step="0.01" required>
                         </div>
                         <button type="submit" class="btn btn-primary">Update Winnings</button>
