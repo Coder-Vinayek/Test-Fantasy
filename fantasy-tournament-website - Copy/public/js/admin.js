@@ -30,7 +30,7 @@ window.showMessage = function (message, type) {
 
     // Clear existing message first
     messageDiv.style.display = 'none';
-    
+
     // Small delay to prevent rapid fire messages
     messageTimeout = setTimeout(() => {
         messageDiv.textContent = message;
@@ -212,16 +212,16 @@ document.addEventListener('DOMContentLoaded', function () {
     async function loadAnalytics() {
         try {
             console.log('📊 Loading analytics...');
-            
+
             const response = await adminFetch('/api/admin/analytics');
             if (!response) {
                 console.error('❌ No response from analytics API');
                 return;
             }
-    
+
             const analytics = await response.json();
             console.log('📈 Analytics data received:', analytics);
-    
+
             // FIXED: Safely update metrics with fallbacks
             const updateElement = (id, value, fallback = 0) => {
                 const element = document.getElementById(id);
@@ -231,7 +231,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     console.warn(`⚠️ Element with id '${id}' not found`);
                 }
             };
-    
+
             const updateNumericElement = (id, value, decimals = 0, fallback = 0) => {
                 const element = document.getElementById(id);
                 if (element) {
@@ -241,7 +241,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     console.warn(`⚠️ Element with id '${id}' not found`);
                 }
             };
-    
+
             // Update basic metrics with safety checks
             updateElement('totalUsers', analytics.totalUsers, 0);
             updateElement('totalTournaments', analytics.totalTournaments, 0);
@@ -251,11 +251,11 @@ document.addEventListener('DOMContentLoaded', function () {
             updateNumericElement('totalWithdrawals', analytics.totalWithdrawals, 2, 0);
             updateNumericElement('entryFees', analytics.entryFeesCollected, 2, 0);
             updateElement('recentUsers', analytics.recentUsers, 0);
-    
+
             // FIXED: Update pending payouts with safety check
             const pendingPayouts = analytics.pendingPayouts || 0;
             updateElement('pendingPayouts', pendingPayouts, 0);
-    
+
             // FIXED: Update payout badge with proper logic
             const payoutBadge = document.getElementById('payoutBadge');
             if (payoutBadge) {
@@ -268,25 +268,25 @@ document.addEventListener('DOMContentLoaded', function () {
                     payoutBadge.style.visibility = 'hidden';
                 }
             }
-    
+
             // FIXED: Popular tournament with safety checks
-            const popularTournament = analytics.popularTournament || { 
-                name: 'No tournaments', 
-                current_participants: 0, 
-                max_participants: 0 
+            const popularTournament = analytics.popularTournament || {
+                name: 'No tournaments',
+                current_participants: 0,
+                max_participants: 0
             };
-            
+
             const popularNameElement = document.getElementById('popularTournamentName');
             if (popularNameElement) {
                 popularNameElement.textContent = popularTournament.name;
             }
-            
+
             const popularStatsElement = document.getElementById('popularTournamentStats');
             if (popularStatsElement) {
-                popularStatsElement.textContent = 
+                popularStatsElement.textContent =
                     `${popularTournament.current_participants || 0}/${popularTournament.max_participants || 0} participants`;
             }
-    
+
             // FIXED: Recent activity with improved error handling
             try {
                 const transactionTrends = analytics.transactionTrends || [];
@@ -295,7 +295,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 console.error('⚠️ Error displaying recent activity:', error);
                 displayRecentActivityError();
             }
-    
+
             // FIXED: Tournament status with improved error handling  
             try {
                 const tournamentStatus = analytics.tournamentStatus || [];
@@ -304,13 +304,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 console.error('⚠️ Error displaying tournament status:', error);
                 displayTournamentStatusError();
             }
-    
+
             console.log('✅ Analytics loaded successfully');
-    
+
         } catch (error) {
             console.error('❌ Error loading analytics:', error);
             showMessage('Failed to load analytics data. Please refresh the page.', 'error');
-            
+
             // Show error state in analytics
             displayAnalyticsError();
         }
@@ -322,14 +322,14 @@ document.addEventListener('DOMContentLoaded', function () {
             console.warn('⚠️ recentActivity container not found');
             return;
         }
-    
+
         container.innerHTML = '';
-    
+
         if (!trends || trends.length === 0) {
             container.innerHTML = '<p class="no-activity-message">No admin actions in the last 7 days</p>';
             return;
         }
-    
+
         try {
             // Group by date with improved logic for Node 12.22
             const groupedByDate = {};
@@ -340,16 +340,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 groupedByDate[date][trend.transaction_type] = trend.total_amount || 0;
             });
-    
+
             // Display grouped data
             Object.keys(groupedByDate).sort().forEach(date => {
                 const item = document.createElement('div');
                 item.className = 'trend-item';
-                
+
                 const formattedDate = new Date(date + 'T00:00:00').toLocaleDateString();
                 const creditAmount = (groupedByDate[date].credit || 0).toFixed(2);
                 const debitAmount = (groupedByDate[date].debit || 0).toFixed(2);
-                
+
                 item.innerHTML = `
                     <div>
                         <strong>${formattedDate}</strong>
@@ -373,20 +373,20 @@ document.addEventListener('DOMContentLoaded', function () {
             console.warn('⚠️ tournamentStatusChart container not found');
             return;
         }
-    
+
         container.innerHTML = '';
-    
+
         if (!statusData || statusData.length === 0) {
             container.innerHTML = '<p class="no-status-message">No tournament status data available</p>';
             return;
         }
-    
+
         try {
             statusData.forEach(status => {
                 const item = document.createElement('div');
                 item.className = 'trend-item';
                 const statusClass = (status.status || 'default').toLowerCase();
-    
+
                 item.innerHTML = `
                     <div class="status-container">
                         <div class="status-indicator ${statusClass}"></div>
@@ -405,36 +405,36 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // NEW: Error state displays
-function displayRecentActivityError() {
-    const container = document.getElementById('recentActivity');
-    if (container) {
-        container.innerHTML = '<p class="error-message">⚠️ Error loading recent activity</p>';
-    }
-}
-
-function displayTournamentStatusError() {
-    const container = document.getElementById('tournamentStatusChart');
-    if (container) {
-        container.innerHTML = '<p class="error-message">⚠️ Error loading tournament status</p>';
-    }
-}
-
-function displayAnalyticsError() {
-    // Reset all values to show error state
-    const errorMessage = '⚠️ Error';
-    const elements = [
-        'totalUsers', 'totalTournaments', 'activeTournaments', 
-        'totalRevenue', 'totalProfit', 'totalWithdrawals', 
-        'entryFees', 'recentUsers', 'pendingPayouts'
-    ];
-    
-    elements.forEach(id => {
-        const element = document.getElementById(id);
-        if (element) {
-            element.textContent = errorMessage;
+    function displayRecentActivityError() {
+        const container = document.getElementById('recentActivity');
+        if (container) {
+            container.innerHTML = '<p class="error-message">⚠️ Error loading recent activity</p>';
         }
-    });
-}
+    }
+
+    function displayTournamentStatusError() {
+        const container = document.getElementById('tournamentStatusChart');
+        if (container) {
+            container.innerHTML = '<p class="error-message">⚠️ Error loading tournament status</p>';
+        }
+    }
+
+    function displayAnalyticsError() {
+        // Reset all values to show error state
+        const errorMessage = '⚠️ Error';
+        const elements = [
+            'totalUsers', 'totalTournaments', 'activeTournaments',
+            'totalRevenue', 'totalProfit', 'totalWithdrawals',
+            'entryFees', 'recentUsers', 'pendingPayouts'
+        ];
+
+        elements.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.textContent = errorMessage;
+            }
+        });
+    }
 
     // Make functions globally available
     window.loadPayouts = loadPayouts;
@@ -741,7 +741,7 @@ function displayAnalyticsError() {
         viewBtn.addEventListener('click', function () {
             const tournamentId = this.getAttribute('data-tournament-id');
             const tournamentName = this.getAttribute('data-tournament-name');
-            viewTournamentParticipants(tournamentId, tournamentName);
+            viewTournamentParticipantsEnhanced(tournamentId, tournamentName);
         });
 
         // Simple delete tournament button event listener
@@ -800,25 +800,96 @@ function displayAnalyticsError() {
         }
     }
 
-    async function viewTournamentParticipants(tournamentId, tournamentName) {
-        try {
-            const response = await adminFetch(`/api/admin/tournament/${tournamentId}/participants`);
-            if (!response) return;
+    // Make functions globally available
+    window.viewTournamentParticipantsEnhanced = viewTournamentParticipantsEnhanced;
+    window.closeParticipantsModal = closeParticipantsModal;
 
-            const participants = await response.json();
+    // Enhanced function to view tournament participants with team grouping
+    function viewTournamentParticipantsEnhanced(tournamentId) {
+        // First get tournament info
+        fetch('/api/admin/tournaments')
+            .then(response => response.json())
+            .then(tournaments => {
+                const tournament = tournaments.find(t => t.id == tournamentId);
+                if (!tournament) {
+                    alert('Tournament not found');
+                    return;
+                }
+    
+                // Then get participants using existing API
+                return fetch('/api/admin/tournament/' + tournamentId + '/participants')
+                    .then(response => response.json())
+                    .then(participants => {
+                        if (!participants || participants.error) {
+                            alert('Error loading participants: ' + (participants.error || 'Unknown error'));
+                            return;
+                        }
+    
+                        const data = {
+                            tournament: tournament,
+                            participants: participants,
+                            teams: [],
+                            totalPlayers: participants.length
+                        };
+    
+                        // If it's a team tournament, try to create mock teams
+                        if (tournament.team_mode && tournament.team_mode !== 'solo') {
+                            data.teams = createAdminMockTeams(participants, tournament.team_mode);
+                        }
+    
+                        // Create and show modal
+                        const modal = document.createElement('div');
+                        modal.className = 'participants-modal';
+                        modal.innerHTML = createParticipantsModalHTML(data);
+                        document.body.appendChild(modal);
+                        modal.style.display = 'block';
+                    });
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to load participants');
+            });
+    }
 
-            document.getElementById('participantsModalTitle').textContent = `Participants: ${tournamentName}`;
 
-            const container = document.getElementById('participantsContainer');
-            container.innerHTML = '';
+    /**
+ * Create mock teams for admin view
+ */
+function createAdminMockTeams(participants, teamMode) {
+    const teamsPerGroup = teamMode === 'duo' ? 2 : 4;
+    const teams = [];
+    
+    for (let i = 0; i < participants.length; i += teamsPerGroup) {
+        const teamPlayers = participants.slice(i, i + teamsPerGroup);
+        
+        if (teamPlayers.length >= 2) {
+            const team = {
+                team_id: Math.floor(i / teamsPerGroup) + 1,
+                team_name: `Team ${Math.floor(i / teamsPerGroup) + 1}`,
+                players: teamPlayers.map((player, index) => ({
+                    ...player,
+                    role: index === 0 ? 'leader' : 'player',
+                    ign: player.username
+                }))
+            };
+            teams.push(team);
+        }
+    }
+    
+    return teams;
+}
 
-            if (participants.length === 0) {
-                container.innerHTML = '<p>No participants in this tournament yet.</p>';
-            } else {
-                const table = document.createElement('table');
-                table.className = 'admin-table';
-
-                table.innerHTML = `
+    // Create modal HTML with team support
+    function createParticipantsModalHTML(data) {
+        const tournament = data.tournament;
+        const tournamentType = tournament.team_mode || 'solo';
+        
+        let participantsHTML = '';
+    
+        if (tournamentType === 'solo' || data.teams.length === 0) {
+            // Show individual participants
+            participantsHTML = `
+                <table class="participants-table">
                     <thead>
                         <tr>
                             <th>ID</th>
@@ -826,32 +897,112 @@ function displayAnalyticsError() {
                             <th>Email</th>
                             <th>Wallet Balance</th>
                             <th>Winnings Balance</th>
-                            <th>Registration Date</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${participants.map(p => `
+                        ${data.participants.map(participant => `
                             <tr>
-                                <td>${p.id}</td>
-                                <td>${p.username}</td>
-                                <td>${p.email}</td>
-                                <td>$${p.wallet_balance.toFixed(2)}</td>
-                                <td>$${p.winnings_balance.toFixed(2)}</td>
-                                <td>${new Date(p.registration_date).toLocaleString()}</td>
+                                <td>${participant.id}</td>
+                                <td>${escapeHtml(participant.username)}</td>
+                                <td>${escapeHtml(participant.email)}</td>
+                                <td>₹${participant.wallet_balance.toFixed(2)}</td>
+                                <td>₹${participant.winnings_balance.toFixed(2)}</td>
                             </tr>
                         `).join('')}
                     </tbody>
-                `;
-
-                container.appendChild(table);
-            }
-
-            document.getElementById('participantsModal').style.display = 'block';
-
-        } catch (error) {
-            console.error('Error loading participants:', error);
-            showMessage('Failed to load tournament participants', 'error');
+                </table>
+            `;
+        } else {
+            // Show teams (mock teams)
+            participantsHTML = `
+                <div class="team-notice" style="background: #fff3cd; padding: 10px; margin-bottom: 15px; border-radius: 5px; border-left: 4px solid #ffc107;">
+                    <strong>Note:</strong> Teams are grouped automatically based on registration order. For actual team data, implement team registration system.
+                </div>
+                <table class="participants-table">
+                    <thead>
+                        <tr>
+                            <th>Team/Player</th>
+                            <th>Username</th>
+                            <th>Role</th>
+                            <th>Email</th>
+                            <th>Wallet Balance</th>
+                            <th>Winnings Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.teams.map(team => {
+                            let teamHTML = `
+                                <tr class="team-row">
+                                    <td class="team-name-cell" colspan="6">
+                                        🏆 ${escapeHtml(team.team_name)}
+                                    </td>
+                                </tr>
+                            `;
+                            
+                            team.players.forEach(player => {
+                                const roleClass = player.role === 'leader' ? 'leader' : '';
+                                const roleIcon = player.role === 'leader' ? '👑' : '👤';
+                                
+                                teamHTML += `
+                                    <tr class="team-member-row">
+                                        <td>  ├─ ${roleIcon}</td>
+                                        <td>${escapeHtml(player.username)}</td>
+                                        <td><span class="member-role ${roleClass}">${player.role}</span></td>
+                                        <td>${escapeHtml(player.email)}</td>
+                                        <td>₹${player.wallet_balance.toFixed(2)}</td>
+                                        <td>₹${player.winnings_balance.toFixed(2)}</td>
+                                    </tr>
+                                `;
+                            });
+                            
+                            return teamHTML;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `;
         }
+    
+        return `
+            <div class="modal-overlay" onclick="closeParticipantsModal()">
+                <div class="modal-content participants-modal-content" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3>Participants: ${escapeHtml(tournament.name)}</h3>
+                        <span class="tournament-mode-badge">${tournamentType.toUpperCase()}</span>
+                        <button class="modal-close" onclick="closeParticipantsModal()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="participants-summary">
+                            <p><strong>Tournament Mode:</strong> ${tournamentType}</p>
+                            <p><strong>Total ${tournamentType === 'solo' ? 'Players' : 'Teams'}:</strong> 
+                               ${tournamentType === 'solo' ? data.participants.length : data.teams.length}</p>
+                            ${tournamentType !== 'solo' ? `<p><strong>Total Players:</strong> ${data.totalPlayers}</p>` : ''}
+                        </div>
+                        <div class="participants-list">
+                            ${participantsHTML}
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="closeParticipantsModal()">Close</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Close modal function
+    function closeParticipantsModal() {
+        const modal = document.querySelector('.participants-modal');
+        if (modal) {
+            modal.remove();
+        }
+    }
+    
+    // Utility function
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     // USER MANAGEMENT FUNCTIONS
@@ -1776,33 +1927,33 @@ function displayAnalyticsError() {
         // Remove any existing listeners by cloning the form
         const newForm = createTournamentForm.cloneNode(true);
         createTournamentForm.parentNode.replaceChild(newForm, createTournamentForm);
-        
+
         newForm.addEventListener('submit', async function (e) {
             e.preventDefault();
-    
+
             // PREVENT DOUBLE SUBMISSION with better state tracking
             if (window.isCreatingTournament || e.target.dataset.submitting === 'true') {
                 console.log('Tournament creation already in progress...');
                 return;
             }
-    
+
             window.isCreatingTournament = true;
             e.target.dataset.submitting = 'true';
-    
+
             const submitBtn = e.target.querySelector('button[type="submit"]');
             const originalText = submitBtn.innerHTML;
-    
+
             try {
                 // Disable button and show loading
                 submitBtn.disabled = true;
                 submitBtn.innerHTML = '🔄 Creating Tournament...';
-    
+
                 const formData = new FormData(newForm);
-                
+
                 // FIXED: Handle entry fee properly
                 let entryFee = 0;
                 const tournamentType = formData.get('tournamentType');
-    
+
                 if (tournamentType === 'free') {
                     entryFee = 0;
                 } else {
@@ -1816,7 +1967,7 @@ function displayAnalyticsError() {
                         throw new Error('Entry fee is required for paid tournaments');
                     }
                 }
-    
+
                 // FIXED: Handle prize pool - allow 0 for free tournaments
                 let prizePool = 0;
                 const prizePoolValue = formData.get('prize_pool');
@@ -1828,7 +1979,7 @@ function displayAnalyticsError() {
                 } else if (tournamentType === 'paid') {
                     throw new Error('Prize pool is required for paid tournaments');
                 }
-    
+
                 const tournamentData = {
                     name: formData.get('name'),
                     description: formData.get('description'),
@@ -1843,9 +1994,9 @@ function displayAnalyticsError() {
                     rank_points: formData.get('rank_points') || '{"1":10,"2":8,"3":6,"4":4,"5":2,"6":1}',
                     match_type: formData.get('match_type') || 'Battle Royale'
                 };
-    
+
                 console.log('Creating tournament with data:', tournamentData);
-    
+
                 // SINGLE API CALL ONLY
                 const response = await fetch('/api/admin/tournaments/enhanced', {
                     method: 'POST',
@@ -1854,17 +2005,17 @@ function displayAnalyticsError() {
                     },
                     body: JSON.stringify(tournamentData)
                 });
-    
+
                 const result = await response.json();
-    
+
                 if (response.ok && result.success) {
-                    const message = entryFee === 0 ? 
-                        '🎉 FREE tournament created successfully!' : 
+                    const message = entryFee === 0 ?
+                        '🎉 FREE tournament created successfully!' :
                         `💰 PAID tournament created successfully! Entry fee: $${entryFee}`;
-                    
+
                     showMessage(result.message || message, 'success');
                     newForm.reset();
-                    
+
                     // Refresh data
                     if (typeof loadAnalytics === 'function') loadAnalytics();
                     if (document.getElementById('tournamentsTab')?.classList.contains('active')) {
@@ -1873,7 +2024,7 @@ function displayAnalyticsError() {
                 } else {
                     throw new Error(result.error || 'Failed to create tournament');
                 }
-    
+
             } catch (error) {
                 console.error('Tournament creation error:', error);
                 showMessage(error.message || 'Failed to create tournament', 'error');
@@ -2596,11 +2747,11 @@ function enhancedCreateTournamentFormHandler(e) {
             console.log('🎉 Creating FREE tournament (entry fee: $0)');
         } else {
             const entryFeeValue = formData.get('entry_fee');
-            
+
             // FIXED: Better validation and parsing to prevent NaN
             if (entryFeeValue && entryFeeValue.trim() !== '') {
                 entryFee = parseFloat(entryFeeValue);
-                
+
                 // Check if parsing resulted in NaN
                 if (isNaN(entryFee) || entryFee <= 0) {
                     throw new Error('Please enter a valid entry fee amount for paid tournaments (minimum $0.01)');
@@ -2608,7 +2759,7 @@ function enhancedCreateTournamentFormHandler(e) {
             } else {
                 throw new Error('Entry fee is required for paid tournaments');
             }
-            
+
             console.log('💰 Creating PAID tournament (entry fee: $' + entryFee + ')');
         }
 
@@ -2670,7 +2821,7 @@ function enhancedCreateTournamentFormHandler(e) {
 async function createTournamentWithAPI(tournamentData, submitBtn, originalText, form) {
     try {
         console.log('Sending tournament data to API:', tournamentData);
-        
+
         const response = await fetch('/api/admin/tournaments/enhanced', {
             method: 'POST',
             headers: {
@@ -2743,37 +2894,37 @@ function validateTournamentForm() {
 }
 
 // Initialize when DOM is ready - FIXED VERSION
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     // Wait for page to fully load
     setTimeout(() => {
         console.log('🔧 Initializing enhanced tournament creation...');
-        
+
         // Initialize the toggle functionality
         initializeEntryFeeToggle();
-        
+
         // Replace the form handler if it exists
         const createTournamentForm = document.getElementById('createTournamentForm');
         if (createTournamentForm) {
             // Remove any existing listeners
             createTournamentForm.removeEventListener('submit', enhancedCreateTournamentFormHandler);
-            
+
             // Add form validation before submit
-            createTournamentForm.addEventListener('submit', function(e) {
+            createTournamentForm.addEventListener('submit', function (e) {
                 // Validate form first
                 if (!validateTournamentForm()) {
                     e.preventDefault();
                     return false;
                 }
-                
+
                 // If validation passes, handle enhanced creation
                 enhancedCreateTournamentFormHandler(e);
             });
-            
+
             console.log('✅ Enhanced tournament creation form handler initialized');
         } else {
             console.warn('⚠️ createTournamentForm not found');
         }
-        
+
     }, 1000);
 });
 
@@ -2787,55 +2938,55 @@ window.createTournamentWithAPI = createTournamentWithAPI;
 // Place this code at the VERY END of your admin.js file
 
 // 1. RESET ALL TOURNAMENT CREATION HANDLERS
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     // Wait a bit for page to load
     setTimeout(() => {
         console.log('🔧 Applying quick fixes...');
-        
+
         // Reset the creation flag
         window.isCreatingTournament = false;
-        
+
         // Find the form
         const createTournamentForm = document.getElementById('createTournamentForm');
         if (!createTournamentForm) {
             console.warn('Tournament form not found');
             return;
         }
-        
+
         // COMPLETELY REMOVE ALL EXISTING EVENT LISTENERS
         const newForm = createTournamentForm.cloneNode(true);
         createTournamentForm.parentNode.replaceChild(newForm, createTournamentForm);
-        
+
         // ADD ONLY ONE EVENT LISTENER
-        newForm.addEventListener('submit', function(e) {
+        newForm.addEventListener('submit', function (e) {
             e.preventDefault();
             e.stopPropagation(); // Prevent bubbling
-            
+
             console.log('🎯 SINGLE tournament creation handler called');
-            
+
             // STRICT double submission check
             if (window.isCreatingTournament === true) {
                 console.log('❌ Already creating tournament, skipping...');
                 return false;
             }
-            
+
             // Set flag immediately
             window.isCreatingTournament = true;
-            
+
             const submitBtn = newForm.querySelector('button[type="submit"]');
             const originalText = submitBtn.innerHTML;
-            
+
             // Disable button immediately
             submitBtn.disabled = true;
             submitBtn.innerHTML = '🔄 Creating...';
-            
+
             // Get form data
             const formData = new FormData(newForm);
-            
+
             // FIXED: Properly handle tournament type
             const tournamentType = formData.get('tournamentType') || 'paid'; // Default to paid
             let entryFee = 0;
-            
+
             if (tournamentType === 'free') {
                 entryFee = 0;
                 console.log('✅ Free tournament - entry fee set to 0');
@@ -2854,7 +3005,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
             }
-            
+
             // Handle prize pool - allow 0 for free tournaments
             let prizePool = 0;
             const prizePoolValue = formData.get('prize_pool');
@@ -2866,7 +3017,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
             }
-            
+
             const tournamentData = {
                 name: formData.get('name'),
                 description: formData.get('description'),
@@ -2881,9 +3032,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 rank_points: formData.get('rank_points') || '{"1":10,"2":8,"3":6,"4":4,"5":2,"6":1}',
                 match_type: formData.get('match_type') || 'Battle Royale'
             };
-            
+
             console.log('📤 Sending tournament data:', tournamentData);
-            
+
             // SINGLE API CALL
             fetch('/api/admin/tournaments/enhanced', {
                 method: 'POST',
@@ -2892,34 +3043,34 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 body: JSON.stringify(tournamentData)
             })
-            .then(response => response.json())
-            .then(result => {
-                if (result.success) {
-                    const message = entryFee === 0 ? 
-                        '🎉 FREE tournament created successfully!' : 
-                        `💰 PAID tournament created successfully!`;
-                    
-                    showMessage(message, 'success');
-                    newForm.reset();
-                    
-                    // Refresh data
-                    if (typeof loadAnalytics === 'function') loadAnalytics();
-                    if (typeof loadTournaments === 'function') loadTournaments();
-                } else {
-                    throw new Error(result.error || 'Failed to create tournament');
-                }
-            })
-            .catch(error => {
-                console.error('❌ Tournament creation error:', error);
-                showMessage(error.message || 'Failed to create tournament', 'error');
-            })
-            .finally(() => {
-                resetCreationState(submitBtn, originalText);
-            });
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        const message = entryFee === 0 ?
+                            '🎉 FREE tournament created successfully!' :
+                            `💰 PAID tournament created successfully!`;
+
+                        showMessage(message, 'success');
+                        newForm.reset();
+
+                        // Refresh data
+                        if (typeof loadAnalytics === 'function') loadAnalytics();
+                        if (typeof loadTournaments === 'function') loadTournaments();
+                    } else {
+                        throw new Error(result.error || 'Failed to create tournament');
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ Tournament creation error:', error);
+                    showMessage(error.message || 'Failed to create tournament', 'error');
+                })
+                .finally(() => {
+                    resetCreationState(submitBtn, originalText);
+                });
         });
-        
+
         console.log('✅ Quick fix applied successfully');
-        
+
     }, 2000); // Wait 2 seconds for everything to load
 });
 
@@ -2929,3 +3080,4 @@ function resetCreationState(submitBtn, originalText) {
     submitBtn.disabled = false;
     submitBtn.innerHTML = originalText;
 }
+
