@@ -827,115 +827,87 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Enhanced function to view tournament participants with team grouping
     function viewTournamentParticipantsEnhanced(tournamentId) {
-        console.log('🔍 FIXED: Starting enhanced participants view for tournament:', tournamentId);
-        
-        // Get tournament info first
-        fetch('/api/admin/tournaments')
-            .then(function(response) { return response.json(); })
-            .then(function(tournaments) {
-                const tournament = tournaments.find(function(t) { return t.id == tournamentId; });
-                if (!tournament) {
-                    alert('Tournament not found');
-                    return;
-                }
+    console.log('🔍 FIXED: Starting enhanced participants view for tournament:', tournamentId);
     
-                console.log('✅ FIXED: Tournament found:', tournament.name);
-    
-                // FIXED: Use enhanced API endpoint that gets REAL team data
-                return fetch('/api/admin/tournament/' + tournamentId + '/participants-enhanced')
-                    .then(function(response) { 
-                        console.log('📡 FIXED: API response status:', response.status);
-                        return response.json(); 
-                    })
-                    .then(function(data) {
-                        console.log('📊 FIXED: Raw API data received:', data);
-                        
-                        if (!data || data.error) {
-                            console.error('❌ FIXED: API error:', data.error);
-                            alert('Error loading participants: ' + (data.error || 'Unknown error'));
-                            return;
-                        }
-    
-                        // FIXED: Debug the structure
-                        console.log('🔍 FIXED: Data structure check:');
-                        console.log('- Tournament:', data.tournament);
-                        console.log('- Participants array:', data.participants);
-                        console.log('- Teams array:', data.teams);
-                        console.log('- Total players:', data.totalPlayers);
-                        
-                        if (data.teams && data.teams.length > 0) {
-                            console.log('👥 FIXED: Teams details:');
-                            data.teams.forEach(function(team, index) {
-                                console.log('  Team ' + index + ':', {
-                                    id: team.team_id,
-                                    name: team.team_name,
-                                    playerCount: team.players ? team.players.length : 0,
-                                    players: team.players
-                                });
+    // Get tournament info first
+    fetch('/api/admin/tournaments')
+        .then(function(response) { return response.json(); })
+        .then(function(tournaments) {
+            const tournament = tournaments.find(function(t) { return t.id == tournamentId; });
+            if (!tournament) {
+                alert('Tournament not found');
+                return;
+            }
+
+            console.log('✅ FIXED: Tournament found:', tournament.name);
+
+            // FIXED: Use enhanced API endpoint that gets REAL team data
+            return fetch('/api/admin/tournament/' + tournamentId + '/participants-enhanced')
+                .then(function(response) { 
+                    console.log('📡 FIXED: API response status:', response.status);
+                    return response.json(); 
+                })
+                .then(function(data) {
+                    console.log('📊 FIXED: Raw API data received:', data);
+                    
+                    if (!data || data.error) {
+                        console.error('❌ FIXED: API error:', data.error);
+                        alert('Error loading participants: ' + (data.error || 'Unknown error'));
+                        return;
+                    }
+
+                    // FIXED: Debug the structure
+                    console.log('🔍 FIXED: Data structure check:');
+                    console.log('- Tournament:', data.tournament);
+                    console.log('- Participants array:', data.participants);
+                    console.log('- Teams array:', data.teams);
+                    console.log('- Total players:', data.totalPlayers);
+                    
+                    if (data.teams && data.teams.length > 0) {
+                        console.log('👥 FIXED: Teams details:');
+                        data.teams.forEach(function(team, index) {
+                            console.log('  Team ' + index + ':', {
+                                id: team.team_id,
+                                name: team.team_name,
+                                playerCount: team.players ? team.players.length : 0,
+                                players: team.players
                             });
-                        }
-    
-                        // FIXED: Use REAL team data from database instead of mock teams
-                        const modalData = {
-                            tournament: tournament,
-                            participants: data.participants || [],
-                            teams: data.teams || [], // REAL teams from database
-                            totalPlayers: data.totalPlayers || (data.participants ? data.participants.length : 0)
-                        };
-    
-                        console.log('🎯 FIXED: Final modal data:', modalData);
-    
-                        // Create and show modal
-                        const modal = document.createElement('div');
-                        modal.className = 'participants-modal';
-                        
-                        try {
-                            modal.innerHTML = createParticipantsModalHTML(modalData);
-                            console.log('✅ FIXED: Modal HTML created successfully');
-                        } catch (htmlError) {
-                            console.error('❌ FIXED: Error creating modal HTML:', htmlError);
-                            alert('Error creating modal: ' + htmlError.message);
-                            return;
-                        }
-                        
-                        document.body.appendChild(modal);
-                        modal.style.display = 'block';
-                        
-                        console.log('✅ FIXED: Modal displayed successfully');
-                    });
-            })
-            .catch(function(error) {
-                console.error('❌ FIXED: Error in participants view:', error);
-                alert('Failed to load participants: ' + error.message);
-            });
-    }
+                        });
+                    }
 
+                    // FIXED: Use REAL team data from database instead of mock teams
+                    const modalData = {
+                        tournament: tournament,
+                        participants: data.participants || [],
+                        teams: data.teams || [], // REAL teams from database
+                        totalPlayers: data.totalPlayers || (data.participants ? data.participants.length : 0)
+                    };
 
-    /**
- * Create mock teams for admin view
- */
-function createAdminMockTeams(participants, teamMode) {
-    const teamsPerGroup = teamMode === 'duo' ? 2 : 4;
-    const teams = [];
-    
-    for (let i = 0; i < participants.length; i += teamsPerGroup) {
-        const teamPlayers = participants.slice(i, i + teamsPerGroup);
-        
-        if (teamPlayers.length >= 2) {
-            const team = {
-                team_id: Math.floor(i / teamsPerGroup) + 1,
-                team_name: `Team ${Math.floor(i / teamsPerGroup) + 1}`,
-                players: teamPlayers.map((player, index) => ({
-                    ...player,
-                    role: index === 0 ? 'leader' : 'player',
-                    ign: player.username
-                }))
-            };
-            teams.push(team);
-        }
-    }
-    
-    return teams;
+                    console.log('🎯 FIXED: Final modal data:', modalData);
+
+                    // Create and show modal
+                    const modal = document.createElement('div');
+                    modal.className = 'participants-modal';
+                    
+                    try {
+                        modal.innerHTML = createParticipantsModalHTML(modalData);
+                        console.log('✅ FIXED: Modal HTML created successfully');
+                    } catch (htmlError) {
+                        console.error('❌ FIXED: Error creating modal HTML:', htmlError);
+                        alert('Error creating modal: ' + htmlError.message);
+                        return;
+                    }
+                    
+                    document.body.appendChild(modal);
+                    modal.style.display = 'block';
+                    
+                    console.log('✅ FIXED: Modal displayed successfully');
+                });
+        })
+        .catch(function(error) {
+            console.error('❌ FIXED: Error in participants view:', error);
+            alert('Failed to load participants: ' + error.message);
+        });
 }
 
     // Create modal HTML with team support
@@ -952,11 +924,11 @@ function createAdminMockTeams(participants, teamMode) {
         if (tournamentType === 'solo' || !data.teams || data.teams.length === 0) {
             // Show individual participants
             console.log('FIXED: Showing individual participants');
-            
+    
             if (!data.participants || data.participants.length === 0) {
                 participantsHTML = '<div class="no-participants">No participants found</div>';
             } else {
-                participantsHTML = 
+                participantsHTML =
                     '<table class="participants-table">' +
                         '<thead>' +
                             '<tr>' +
@@ -985,15 +957,15 @@ function createAdminMockTeams(participants, teamMode) {
         } else {
             // Show REAL teams with REAL team names from database
             console.log('FIXED: Showing teams, count:', data.teams.length);
-            
+    
             // FIXED: Debug each team
             data.teams.forEach(function(team, index) {
                 console.log('FIXED: Team ' + index + ':', team);
                 console.log('FIXED: Team name:', team.team_name);
                 console.log('FIXED: Players:', team.players);
             });
-            
-            participantsHTML = 
+    
+            participantsHTML =
                 '<div class="team-notice" style="background: #d4edda; padding: 10px; margin-bottom: 15px; border-radius: 5px; border-left: 4px solid #28a745;">' +
                     '<strong>✅ SUCCESS:</strong> Showing ' + data.teams.length + ' team(s) with ' + data.totalPlayers + ' total players.' +
                 '</div>' +
@@ -1014,9 +986,9 @@ function createAdminMockTeams(participants, teamMode) {
             // FIXED: Process each team properly
             data.teams.forEach(function(team) {
                 console.log('FIXED: Processing team:', team.team_name);
-                
+    
                 // Team header row
-                participantsHTML += 
+                participantsHTML +=
                     '<tr class="team-row">' +
                         '<td class="team-name-cell" colspan="7" style="background: #f8f9fa; font-weight: bold; padding: 10px;">' +
                             '🏆 ' + escapeHtml(team.team_name) + ' (' + (team.players ? team.players.length : 0) + ' players)' +
@@ -1027,12 +999,12 @@ function createAdminMockTeams(participants, teamMode) {
                 if (team.players && team.players.length > 0) {
                     team.players.forEach(function(player) {
                         console.log('FIXED: Processing player:', player.username);
-                        
+    
                         const roleClass = player.role === 'leader' ? 'leader' : '';
-                        const roleIcon = player.role === 'leader' ? '👑' : 
+                        const roleIcon = player.role === 'leader' ? '👑' :
                                         player.role === 'substitute' ? '🔄' : '👤';
     
-                        participantsHTML += 
+                        participantsHTML +=
                             '<tr class="team-member-row">' +
                                 '<td style="padding-left: 20px;">├─ ' + roleIcon + '</td>' +
                                 '<td>' + escapeHtml(player.username || 'Unknown') + '</td>' +
@@ -1044,19 +1016,19 @@ function createAdminMockTeams(participants, teamMode) {
                             '</tr>';
                     });
                 } else {
-                    participantsHTML += 
+                    participantsHTML +=
                         '<tr class="team-member-row">' +
                             '<td colspan="7" style="padding-left: 20px; color: #666; font-style: italic;">No players found for this team</td>' +
                         '</tr>';
                 }
             });
     
-            participantsHTML += 
+            participantsHTML +=
                     '</tbody>' +
                 '</table>';
         }
     
-        return 
+        return
             '<div class="modal-overlay" onclick="closeParticipantsModal()">' +
                 '<div class="modal-content participants-modal-content" onclick="event.stopPropagation()">' +
                     '<div class="modal-header">' +
