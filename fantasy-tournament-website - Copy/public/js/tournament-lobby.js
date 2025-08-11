@@ -427,19 +427,38 @@ document.addEventListener('DOMContentLoaded', function() {
         document.body.removeChild(link);
     };
 
-    // Rest of the existing functions remain the same...
+    window.loadPlayers = loadPlayers;
     async function loadPlayers() {
         console.log('👥 Loading players with REAL team data...');
         try {
+            const tournamentId = window.location.pathname.split('/').pop();
+            
+            if (!tournamentId || tournamentId === 'tournament') {
+                console.error('❌ Invalid tournament ID');
+                document.getElementById('playersList').innerHTML = '<div class="error-players">Invalid tournament ID</div>';
+                return;
+            }
+    
             // FIXED: Use enhanced API endpoint that returns REAL team data
             const response = await fetch('/api/tournament/' + tournamentId + '/players-enhanced');
-            const data = await response.json();
             
             if (!response.ok) {
-                throw new Error(data.error || 'Failed to load players');
+                throw new Error('HTTP ' + response.status + ': ' + response.statusText);
+            }
+            
+            const data = await response.json();
+    
+            if (data.error) {
+                throw new Error(data.error);
             }
     
             console.log('✅ FIXED: Enhanced players data loaded:', data);
+    
+            const playersList = document.getElementById('playersList');
+            if (!playersList) {
+                console.error('❌ playersList element not found');
+                return;
+            }
     
             playersList.innerHTML = '';
     
@@ -461,7 +480,7 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 // FIXED: Display REAL teams with REAL team names from database
                 console.log('FIXED: Displaying', data.teams.length, 'REAL teams with actual names');
-                
+    
                 data.teams.forEach(function(team) {
                     console.log('FIXED: Team name from database:', team.team_name);
                     const teamElement = createTeamElement(team, tournamentType);
@@ -471,40 +490,43 @@ document.addEventListener('DOMContentLoaded', function() {
     
         } catch (error) {
             console.error('❌ Error loading players:', error);
-            playersList.innerHTML = '<div class="error-players">Failed to load players. Please refresh.</div>';
+            const playersList = document.getElementById('playersList');
+            if (playersList) {
+                playersList.innerHTML = '<div class="error-players">Failed to load players: ' + error.message + '. Please refresh.</div>';
+            }
         }
     }
     
-    // ============================================================================
-    // ADD THIS NEW FUNCTION FOR TEAM DISPLAY
-    // ============================================================================
-    
+    // FIXED: Create team element with proper null checks
     function createTeamElement(team, tournamentType) {
         const teamDiv = document.createElement('div');
         teamDiv.className = 'team-item';
     
         // FIXED: Use REAL team name from database, NOT "Team 1", "Team 2"
         const teamName = team.team_name || ('Team ' + team.team_id); // Fallback if no name
-        const players = team.players || [];
+        const players = Array.isArray(team.players) ? team.players : [];
         const isOnline = players.some(function(p) { return p.is_online; });
     
         console.log('FIXED: Creating team element with REAL name:', teamName);
     
         let playersHtml = '';
         players.forEach(function(player, index) {
-            const role = player.role === 'leader' ? '👑' :
-                        player.role === 'substitute' ? '🔄' : '👤';
+            const role = player.role || 'player';
+            const roleIcon = role === 'leader' ? '👑' :
+                            role === 'substitute' ? '🔄' : '👤';
             const onlineStatus = player.is_online ? 'online' : 'offline';
+            const username = player.username || 'Unknown';
+            const ign = player.ign || username;
     
-            playersHtml += 
+            playersHtml +=
                 '<div class="team-player ' + onlineStatus + '">' +
-                    '<span class="player-name">' + escapeHtml(player.username) + ' ' + role + '</span>' +
-                    '<span class="player-ign">' + escapeHtml(player.ign || player.username) + '</span>' +
+                    '<span class="player-name">' + escapeHtml(username) + ' ' + roleIcon + '</span>' +
+                    '<span class="player-ign">' + escapeHtml(ign) + '</span>' +
                     '<span class="player-status-dot ' + onlineStatus + '"></span>' +
                 '</div>';
         });
     
-        teamDiv.innerHTML = 
+        teamDiv.innerHTML =
             '<div class="team-header ' + (isOnline ? 'team-online' : 'team-offline') + '">' +
                 '<div class="team-info">' +
                     '<h4 class="team-name">' + escapeHtml(teamName) + '</h4>' +
@@ -520,23 +542,27 @@ document.addEventListener('DOMContentLoaded', function() {
     
         return teamDiv;
     }
-
+    
+    // FIXED: Create player element with proper null checks
     function createPlayerElement(player) {
         const playerDiv = document.createElement('div');
         playerDiv.className = 'player-item ' + (player.is_online ? 'online' : 'offline');
     
-        const joinDate = new Date(player.registration_date || player.created_at).toLocaleDateString();
+        const username = player.username || 'Unknown';
+        const joinDate = player.registration_date || player.created_at;
+        const formattedDate = joinDate ? new Date(joinDate).toLocaleDateString() : 'Unknown';
+        const walletBalance = player.wallet_balance || 0;
     
-        playerDiv.innerHTML = 
+        playerDiv.innerHTML =
             '<div class="player-avatar">' +
-                '<span class="player-initial">' + player.username.charAt(0).toUpperCase() + '</span>' +
+                '<span class="player-initial">' + username.charAt(0).toUpperCase() + '</span>' +
                 '<span class="player-status ' + (player.is_online ? 'online' : 'offline') + '"></span>' +
             '</div>' +
             '<div class="player-info">' +
-                '<div class="player-name">' + escapeHtml(player.username) + (player.is_admin ? ' 👑' : '') + '</div>' +
+                '<div class="player-name">' + escapeHtml(username) + (player.is_admin ? ' 👑' : '') + '</div>' +
                 '<div class="player-meta">' +
-                    '<span class="join-date">Joined: ' + joinDate + '</span>' +
-                    '<span class="player-balance">₹' + parseFloat(player.wallet_balance || 0).toFixed(2) + '</span>' +
+                    '<span class="join-date">Joined: ' + formattedDate + '</span>' +
+                    '<span class="player-balance">₹' + parseFloat(walletBalance).toFixed(2) + '</span>' +
                 '</div>' +
             '</div>';
     
@@ -643,9 +669,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function escapeHtml(text) {
-        if (!text) return '';
+        if (!text || text === null || text === undefined) return '';
+        if (typeof text !== 'string') return String(text);
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
-    }    
+    }  
 });
