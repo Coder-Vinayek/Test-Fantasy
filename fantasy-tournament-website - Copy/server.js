@@ -2382,7 +2382,7 @@ app.get('/api/admin/tournament/:id/participants-enhanced', requireAdmin, async (
         const tournamentId = req.params.id;
         console.log('🔍 FIXED: Getting enhanced participants for admin, tournament:', tournamentId);
 
-        // Get tournament info
+        // Get tournament info first
         const { data: tournament, error: tournamentError } = await supabase
             .from('tournaments')
             .select('id, name, team_mode, match_type')
@@ -2391,7 +2391,10 @@ app.get('/api/admin/tournament/:id/participants-enhanced', requireAdmin, async (
 
         if (tournamentError) {
             console.error('❌ FIXED: Admin tournament fetch error:', tournamentError);
-            return res.status(404).json({ error: 'Tournament not found', details: tournamentError });
+            return res.status(404).json({ 
+                error: 'Tournament not found', 
+                details: tournamentError.message 
+            });
         }
 
         console.log('✅ FIXED: Admin tournament found:', tournament.name);
@@ -2420,7 +2423,10 @@ app.get('/api/admin/tournament/:id/participants-enhanced', requireAdmin, async (
 
             if (participantsError) {
                 console.error('❌ FIXED: Admin participants fetch error:', participantsError);
-                return res.status(500).json({ error: 'Failed to fetch participants', details: participantsError });
+                return res.status(500).json({ 
+                    error: 'Failed to fetch participants', 
+                    details: participantsError.message 
+                });
             }
 
             console.log('✅ FIXED: Admin participants fetched:', participants.length);
@@ -2453,7 +2459,7 @@ app.get('/api/admin/tournament/:id/participants-enhanced', requireAdmin, async (
 
             if (teamRegError) {
                 console.error('❌ FIXED: Team registrations fetch error:', teamRegError);
-                
+
                 // Fallback to individual participants
                 const { data: participants, error: participantsError } = await supabase
                     .from('tournament_registrations')
@@ -2472,7 +2478,10 @@ app.get('/api/admin/tournament/:id/participants-enhanced', requireAdmin, async (
                     .eq('tournament_id', tournamentId);
 
                 if (participantsError) {
-                    return res.status(500).json({ error: 'Failed to fetch participants', details: participantsError });
+                    return res.status(500).json({ 
+                        error: 'Failed to fetch participants', 
+                        details: participantsError.message 
+                    });
                 }
 
                 const formattedParticipants = participants.map(function(reg) {
@@ -2490,7 +2499,7 @@ app.get('/api/admin/tournament/:id/participants-enhanced', requireAdmin, async (
                 });
             }
 
-            console.log('✅ FIXED: Team registrations found:', teamRegistrations.length);
+            console.log('✅ FIXED: Team registrations found:', teamRegistrations ? teamRegistrations.length : 0);
 
             if (!teamRegistrations || teamRegistrations.length === 0) {
                 // No teams found, fall back to individual view
@@ -2511,7 +2520,10 @@ app.get('/api/admin/tournament/:id/participants-enhanced', requireAdmin, async (
                     .eq('tournament_id', tournamentId);
 
                 if (participantsError) {
-                    return res.status(500).json({ error: 'Failed to fetch participants', details: participantsError });
+                    return res.status(500).json({ 
+                        error: 'Failed to fetch participants', 
+                        details: participantsError.message 
+                    });
                 }
 
                 const formattedParticipants = participants.map(function(reg) {
@@ -2534,55 +2546,60 @@ app.get('/api/admin/tournament/:id/participants-enhanced', requireAdmin, async (
             let totalPlayers = 0;
 
             for (const teamReg of teamRegistrations) {
-                // FIXED: Remove last_active from query
-                const { data: teamMembers, error: membersError } = await supabase
-                    .from('users')
-                    .select('id, username, email, wallet_balance, winnings_balance, is_admin')
-                    .in('id', teamReg.team_members || []);
-
-                if (membersError) {
-                    console.error('Error fetching team members:', membersError);
-                    continue;
-                }
-
-                // Parse team data to get roles and IGNs
-                let teamData = {};
                 try {
-                    teamData = JSON.parse(teamReg.team_data || '{}');
-                } catch (e) {
-                    console.warn('Could not parse team data for team:', teamReg.team_name);
-                }
+                    // Get team members
+                    const { data: teamMembers, error: membersError } = await supabase
+                        .from('users')
+                        .select('id, username, email, wallet_balance, winnings_balance, is_admin')
+                        .in('id', teamReg.team_members || []);
 
-                const playersWithRoles = teamMembers.map(function(member, index) {
-                    let role = 'player';
-                    let ign = member.username;
-
-                    // Determine role and IGN from team data
-                    if (teamData.players && Array.isArray(teamData.players)) {
-                        const playerData = teamData.players.find(function(p) {
-                            return p.username === member.username;
-                        });
-                        if (playerData) {
-                            role = playerData.role || (index === 0 ? 'leader' : 'player');
-                            ign = playerData.ign || member.username;
-                        }
-                    } else if (index === 0) {
-                        role = 'leader'; // First player is typically the leader
+                    if (membersError) {
+                        console.error('Error fetching team members:', membersError);
+                        continue;
                     }
 
-                    return Object.assign({}, member, {
-                        role: role,
-                        ign: ign
+                    // Parse team data to get roles and IGNs
+                    let teamData = {};
+                    try {
+                        teamData = JSON.parse(teamReg.team_data || '{}');
+                    } catch (e) {
+                        console.warn('Could not parse team data for team:', teamReg.team_name);
+                    }
+
+                    const playersWithRoles = teamMembers.map(function(member, index) {
+                        let role = 'player';
+                        let ign = member.username;
+
+                        // Determine role and IGN from team data
+                        if (teamData.players && Array.isArray(teamData.players)) {
+                            const playerData = teamData.players.find(function(p) {
+                                return p.username === member.username;
+                            });
+                            if (playerData) {
+                                role = playerData.role || (index === 0 ? 'leader' : 'player');
+                                ign = playerData.ign || member.username;
+                            }
+                        } else if (index === 0) {
+                            role = 'leader'; // First player is typically the leader
+                        }
+
+                        return Object.assign({}, member, {
+                            role: role,
+                            ign: ign
+                        });
                     });
-                });
 
-                formattedTeams.push({
-                    team_id: teamReg.id,
-                    team_name: teamReg.team_name, // REAL team name from database
-                    players: playersWithRoles
-                });
+                    formattedTeams.push({
+                        team_id: teamReg.id,
+                        team_name: teamReg.team_name, // REAL team name from database
+                        players: playersWithRoles
+                    });
 
-                totalPlayers += playersWithRoles.length;
+                    totalPlayers += playersWithRoles.length;
+                } catch (teamError) {
+                    console.error('Error processing team:', teamReg.team_name, teamError);
+                    continue;
+                }
             }
 
             console.log('✅ FIXED: Processed', formattedTeams.length, 'REAL teams with actual names');
@@ -2604,6 +2621,199 @@ app.get('/api/admin/tournament/:id/participants-enhanced', requireAdmin, async (
     }
 });
 
+// FIXED: Enhanced lobby players API endpoint
+app.get('/api/tournament/:id/players-enhanced', requireAuth, async (req, res) => {
+    try {
+        const tournamentId = req.params.id;
+        console.log('🔍 FIXED: Getting enhanced players for lobby, tournament:', tournamentId);
+
+        // Check if user is registered for this tournament (unless admin)
+        if (!req.session.isAdmin) {
+            const { data: userRegistration, error: regError } = await supabase
+                .from('tournament_registrations')
+                .select('*')
+                .eq('tournament_id', tournamentId)
+                .eq('user_id', req.session.userId);
+
+            if (regError || !userRegistration || userRegistration.length === 0) {
+                return res.status(403).json({ error: 'Not registered for this tournament' });
+            }
+        }
+
+        // Get tournament info
+        const { data: tournament, error: tournamentError } = await supabase
+            .from('tournaments')
+            .select('id, name, team_mode, match_type')
+            .eq('id', tournamentId)
+            .single();
+
+        if (tournamentError) {
+            return res.status(404).json({ error: 'Tournament not found' });
+        }
+
+        const teamMode = tournament.team_mode || 'solo';
+        console.log('✅ FIXED: Lobby team mode:', teamMode);
+
+        if (teamMode === 'solo') {
+            // Solo tournament - get individual players
+            const { data: players, error: playersError } = await supabase
+                .from('tournament_registrations')
+                .select(`
+                    registration_date,
+                    users (
+                        id,
+                        username,
+                        wallet_balance,
+                        is_admin,
+                        created_at
+                    )
+                `)
+                .eq('tournament_id', tournamentId);
+
+            if (playersError) {
+                return res.status(500).json({ error: 'Failed to fetch players' });
+            }
+
+            const formattedPlayers = players.map(function(registration) {
+                return Object.assign({}, registration.users, {
+                    registration_date: registration.registration_date,
+                    is_online: true // SIMPLIFIED: Just assume online since we don't have last_active
+                });
+            });
+
+            return res.json({
+                tournament_type: teamMode,
+                players: formattedPlayers,
+                teams: []
+            });
+        } else {
+            // Team tournament - get REAL teams
+            console.log('🔍 FIXED: Getting REAL teams for lobby...');
+
+            const { data: teamRegistrations, error: teamRegError } = await supabase
+                .from('team_registrations')
+                .select(`
+                    id,
+                    team_name,
+                    team_members,
+                    team_data
+                `)
+                .eq('tournament_id', tournamentId);
+
+            if (teamRegError || !teamRegistrations || teamRegistrations.length === 0) {
+                console.log('⚠️ FIXED: No teams found, falling back to individual players');
+
+                // Fallback to individual players if no teams
+                const { data: players, error: playersError } = await supabase
+                    .from('tournament_registrations')
+                    .select(`
+                        registration_date,
+                        users (
+                            id,
+                            username,
+                            wallet_balance,
+                            is_admin,
+                            created_at
+                        )
+                    `)
+                    .eq('tournament_id', tournamentId);
+
+                if (playersError) {
+                    return res.status(500).json({ error: 'Failed to fetch players' });
+                }
+
+                const formattedPlayers = players.map(function(registration) {
+                    return Object.assign({}, registration.users, {
+                        registration_date: registration.registration_date,
+                        is_online: true // SIMPLIFIED: Just assume online
+                    });
+                });
+
+                return res.json({
+                    tournament_type: 'solo', // Force solo mode
+                    players: formattedPlayers,
+                    teams: [],
+                    note: 'No teams found - displaying as individual players'
+                });
+            }
+
+            // Process REAL teams for lobby
+            const formattedTeams = [];
+            const allPlayers = [];
+
+            for (const teamReg of teamRegistrations) {
+                try {
+                    const { data: teamMembers, error: membersError } = await supabase
+                        .from('users')
+                        .select('id, username, wallet_balance, is_admin')
+                        .in('id', teamReg.team_members || []);
+
+                    if (membersError) {
+                        console.error('Error fetching team members:', membersError);
+                        continue;
+                    }
+
+                    let teamData = {};
+                    try {
+                        teamData = JSON.parse(teamReg.team_data || '{}');
+                    } catch (e) {
+                        console.warn('Could not parse team data for team:', teamReg.team_name);
+                    }
+
+                    const playersWithRoles = teamMembers.map(function(member, index) {
+                        let role = 'player';
+                        let ign = member.username;
+
+                        if (teamData.players && Array.isArray(teamData.players)) {
+                            const playerData = teamData.players.find(function(p) {
+                                return p.username === member.username;
+                            });
+                            if (playerData) {
+                                role = playerData.role || (index === 0 ? 'leader' : 'player');
+                                ign = playerData.ign || member.username;
+                            }
+                        } else if (index === 0) {
+                            role = 'leader';
+                        }
+
+                        const playerWithRole = Object.assign({}, member, {
+                            role: role,
+                            ign: ign,
+                            is_online: true // SIMPLIFIED: Just assume online
+                        });
+
+                        allPlayers.push(playerWithRole);
+                        return playerWithRole;
+                    });
+
+                    formattedTeams.push({
+                        team_id: teamReg.id,
+                        team_name: teamReg.team_name, // REAL team name
+                        players: playersWithRoles
+                    });
+                } catch (teamError) {
+                    console.error('Error processing team for lobby:', teamReg.team_name, teamError);
+                    continue;
+                }
+            }
+
+            console.log('✅ FIXED: Lobby teams processed with REAL names:', formattedTeams.map(function(t) { return t.team_name; }));
+
+            return res.json({
+                tournament_type: teamMode,
+                players: allPlayers,
+                teams: formattedTeams // REAL teams with REAL names
+            });
+        }
+
+    } catch (error) {
+        console.error('❌ FIXED: Enhanced lobby players API critical error:', error);
+        res.status(500).json({
+            error: 'Internal server error',
+            details: error.message
+        });
+    }
+});
 
 // Enhanced admin tournament creation
 app.post('/api/admin/tournaments/enhanced', requireAdmin, async (req, res) => {
