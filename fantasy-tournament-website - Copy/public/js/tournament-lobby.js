@@ -429,26 +429,129 @@ document.addEventListener('DOMContentLoaded', function() {
     async function loadPlayers() {
         console.log('👥 Loading players...');
         try {
+            // Use existing API endpoint
             const response = await fetch(`/api/tournament/${tournamentId}/players`);
             const players = await response.json();
-
             console.log('✅ Players loaded:', players.length, 'players');
-
+    
             playersList.innerHTML = '';
-
+    
             if (players.length === 0) {
                 playersList.innerHTML = '<div class="no-players">No players found</div>';
                 return;
             }
-
-            players.forEach(player => {
-                const playerElement = createPlayerElement(player);
-                playersList.appendChild(playerElement);
-            });
-
+    
+            // Get tournament info to determine team mode
+            const tournamentResponse = await fetch(`/api/tournament/${tournamentId}/lobby`);
+            const tournamentData = await tournamentResponse.json();
+            const tournament = tournamentData.tournament;
+            const teamMode = tournament.team_mode || 'solo';
+    
+            console.log('Tournament mode:', teamMode);
+    
+            if (teamMode === 'solo') {
+                // Display individual players for solo tournaments
+                players.forEach(player => {
+                    const playerElement = createPlayerElement(player);
+                    playersList.appendChild(playerElement);
+                });
+            } else {
+                // For duo/squad, try to group players into mock teams
+                const teams = createMockTeams(players, teamMode);
+                console.log('Mock teams created:', teams.length);
+    
+                if (teams.length > 0) {
+                    teams.forEach(team => {
+                        const teamElement = createTeamElement(team, teamMode);
+                        playersList.appendChild(teamElement);
+                    });
+                } else {
+                    // Fallback to individual display
+                    players.forEach(player => {
+                        const playerElement = createPlayerElement(player);
+                        playersList.appendChild(playerElement);
+                    });
+                }
+            }
+    
         } catch (error) {
             console.error('❌ Error loading players:', error);
+            showMessage('Failed to load players', 'error');
         }
+    }
+    
+    /**
+ * Create mock teams from individual players
+ * This is a workaround when team data is not available
+ */
+function createMockTeams(players, teamMode) {
+    const teamsPerGroup = teamMode === 'duo' ? 2 : 4;
+    const teams = [];
+    
+    // Group players into teams of appropriate size
+    for (let i = 0; i < players.length; i += teamsPerGroup) {
+        const teamPlayers = players.slice(i, i + teamsPerGroup);
+        
+        if (teamPlayers.length >= 2) { // At least 2 players for a team
+            const team = {
+                team_id: Math.floor(i / teamsPerGroup) + 1,
+                team_name: `Team ${Math.floor(i / teamsPerGroup) + 1}`,
+                players: teamPlayers.map((player, index) => ({
+                    ...player,
+                    role: index === 0 ? 'leader' : 'player',
+                    ign: player.username // Use username as IGN fallback
+                }))
+            };
+            teams.push(team);
+        }
+    }
+    
+    return teams;
+}
+
+    // ============================================================================
+    // ADD THIS NEW FUNCTION FOR TEAM DISPLAY
+    // ============================================================================
+    
+    function createTeamElement(team, tournamentType) {
+        const teamDiv = document.createElement('div');
+        teamDiv.className = 'team-item';
+        
+        const teamName = team.team_name || `Team ${team.team_id}`;
+        const players = team.players || [];
+        const isOnline = players.some(p => p.is_online);
+        
+        let playersHtml = '';
+        players.forEach((player, index) => {
+            const role = player.role === 'leader' ? '👑' : 
+                        player.role === 'substitute' ? '🔄' : '';
+            const onlineStatus = player.is_online ? 'online' : 'offline';
+            
+            playersHtml += `
+                <div class="team-player ${onlineStatus}">
+                    <span class="player-name">${escapeHtml(player.username)} ${role}</span>
+                    <span class="player-ign">${escapeHtml(player.ign || player.username)}</span>
+                    <span class="player-status-dot ${onlineStatus}"></span>
+                </div>
+            `;
+        });
+    
+        teamDiv.innerHTML = `
+            <div class="team-header ${isOnline ? 'team-online' : 'team-offline'}">
+                <div class="team-info">
+                    <h4 class="team-name">${escapeHtml(teamName)}</h4>
+                    <span class="team-meta">${players.length} players</span>
+                </div>
+                <div class="team-status">
+                    <span class="status-indicator ${isOnline ? 'online' : 'offline'}"></span>
+                </div>
+            </div>
+            <div class="team-players">
+                ${playersHtml}
+            </div>
+        `;
+    
+        return teamDiv;
     }
 
     function createPlayerElement(player) {
