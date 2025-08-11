@@ -2172,6 +2172,431 @@ app.post('/api/tournaments/register-team', requireAuth, checkBanStatus, async (r
     }
 });
 
+
+// ============================================================================
+// 1. ADD ENHANCED PLAYERS API ROUTE
+// ============================================================================
+// Add this route after your existing tournament routes in server.js
+
+app.get('/api/tournament/:id/players-enhanced', requireAuth, async (req, res) => {
+    try {
+        const tournamentId = req.params.id;
+        console.log('🔍 DEBUG: Getting enhanced players for tournament:', tournamentId);
+        console.log('🔍 DEBUG: User session:', req.session.userId);
+
+        // First, let's check if the tournament exists
+        const { data: tournament, error: tournamentError } = await supabase
+            .from('tournaments')
+            .select('*')
+            .eq('id', tournamentId)
+            .single();
+
+        if (tournamentError) {
+            console.error('❌ DEBUG: Tournament fetch error:', tournamentError);
+            return res.status(404).json({ error: 'Tournament not found', details: tournamentError });
+        }
+
+        console.log('✅ DEBUG: Tournament found:', tournament.name);
+        console.log('✅ DEBUG: Tournament team_mode:', tournament.team_mode);
+
+        // Check if user is registered for this tournament
+        const { data: userRegistration, error: regError } = await supabase
+            .from('tournament_registrations')
+            .select('*')
+            .eq('tournament_id', tournamentId)
+            .eq('user_id', req.session.userId);
+
+        if (regError) {
+            console.error('❌ DEBUG: Registration check error:', regError);
+            return res.status(500).json({ error: 'Registration check failed', details: regError });
+        }
+
+        console.log('✅ DEBUG: User registrations found:', userRegistration.length);
+
+        if (!userRegistration || userRegistration.length === 0) {
+            return res.status(403).json({ error: 'Not registered for this tournament' });
+        }
+
+        const teamMode = tournament.team_mode || 'solo';
+        console.log('✅ DEBUG: Team mode determined:', teamMode);
+
+        // Helper function to check if user is online
+        function isUserOnline(lastActive) {
+            if (!lastActive) return false;
+            const now = new Date();
+            const lastActiveDate = new Date(lastActive);
+            const diffMinutes = (now - lastActiveDate) / (1000 * 60);
+            return diffMinutes < 15;
+        }
+
+        if (teamMode === 'solo') {
+            console.log('🔍 DEBUG: Processing solo tournament...');
+            
+            // For solo tournaments, get all registered players
+            const { data: players, error: playersError } = await supabase
+                .from('tournament_registrations')
+                .select(`
+                    users (
+                        id,
+                        username,
+                        wallet_balance,
+                        is_admin,
+                        last_active
+                    ),
+                    registration_date
+                `)
+                .eq('tournament_id', tournamentId);
+
+            if (playersError) {
+                console.error('❌ DEBUG: Players fetch error:', playersError);
+                return res.status(500).json({ error: 'Failed to fetch players', details: playersError });
+            }
+
+            console.log('✅ DEBUG: Players fetched:', players.length);
+
+            const formattedPlayers = players.map(registration => ({
+                ...registration.users,
+                registration_date: registration.registration_date,
+                is_online: isUserOnline(registration.users.last_active)
+            }));
+
+            return res.json({
+                tournament_type: teamMode,
+                players: formattedPlayers,
+                teams: []
+            });
+        } else {
+            console.log('🔍 DEBUG: Processing team tournament...');
+            
+            // First, let's check if tournament_teams table exists
+            const { data: teamsCheck, error: teamsCheckError } = await supabase
+                .from('tournament_teams')
+                .select('id')
+                .eq('tournament_id', tournamentId)
+                .limit(1);
+
+            if (teamsCheckError) {
+                console.error('❌ DEBUG: Teams table check error:', teamsCheckError);
+                
+                // Fallback: treat as solo if teams table doesn't exist or has issues
+                console.log('🔄 DEBUG: Falling back to solo mode due to teams table issue');
+                
+                const { data: players, error: playersError } = await supabase
+                    .from('tournament_registrations')
+                    .select(`
+                        users (
+                            id,
+                            username,
+                            wallet_balance,
+                            is_admin,
+                            last_active
+                        ),
+                        registration_date
+                    `)
+                    .eq('tournament_id', tournamentId);
+
+                if (playersError) {
+                    console.error('❌ DEBUG: Fallback players fetch error:', playersError);
+                    return res.status(500).json({ error: 'Failed to fetch players', details: playersError });
+                }
+
+                const formattedPlayers = players.map(registration => ({
+                    ...registration.users,
+                    registration_date: registration.registration_date,
+                    is_online: isUserOnline(registration.users.last_active)
+                }));
+
+                return res.json({
+                    tournament_type: 'solo', // Force solo mode
+                    players: formattedPlayers,
+                    teams: [],
+                    note: 'Displayed as solo due to team structure unavailable'
+                });
+            }
+
+            console.log('✅ DEBUG: Teams table accessible');
+
+            // Try to get teams with members
+            const { data: teams, error: teamsError } = await supabase
+                .from('tournament_teams')
+                .select(`
+                    id,
+                    team_name,
+                    tournament_team_members (
+                        role,
+                        ign,
+                        users (
+                            id,
+                            username,
+                            wallet_balance,
+                            is_admin,
+                            last_active
+                        )
+                    )
+                `)
+                .eq('tournament_id', tournamentId);
+
+            if (teamsError) {
+                console.error('❌ DEBUG: Teams with members fetch error:', teamsError);
+                
+                // Another fallback approach - just get individual players
+                const { data: players, error: playersError } = await supabase
+                    .from('tournament_registrations')
+                    .select(`
+                        users (
+                            id,
+                            username,
+                            wallet_balance,
+                            is_admin,
+                            last_active
+                        ),
+                        registration_date
+                    `)
+                    .eq('tournament_id', tournamentId);
+
+                if (playersError) {
+                    console.error('❌ DEBUG: Final fallback players fetch error:', playersError);
+                    return res.status(500).json({ error: 'Failed to fetch any player data', details: playersError });
+                }
+
+                const formattedPlayers = players.map(registration => ({
+                    ...registration.users,
+                    registration_date: registration.registration_date,
+                    is_online: isUserOnline(registration.users.last_active)
+                }));
+
+                return res.json({
+                    tournament_type: 'solo', // Force solo mode
+                    players: formattedPlayers,
+                    teams: [],
+                    note: 'Displayed as solo due to team data fetch issues'
+                });
+            }
+
+            console.log('✅ DEBUG: Teams data fetched successfully:', teams.length, 'teams');
+
+            const formattedTeams = teams.map(team => ({
+                team_id: team.id,
+                team_name: team.team_name,
+                players: team.tournament_team_members.map(member => ({
+                    ...member.users,
+                    role: member.role,
+                    ign: member.ign,
+                    is_online: isUserOnline(member.users.last_active)
+                }))
+            }));
+
+            const allPlayers = formattedTeams.flatMap(team => team.players);
+
+            return res.json({
+                tournament_type: teamMode,
+                players: allPlayers,
+                teams: formattedTeams
+            });
+        }
+
+    } catch (error) {
+        console.error('❌ DEBUG: Enhanced players API critical error:', error);
+        console.error('❌ DEBUG: Error stack:', error.stack);
+        res.status(500).json({ 
+            error: 'Internal server error', 
+            details: error.message,
+            stack: error.stack 
+        });
+    }
+});
+
+// ============================================================================
+// 2. ADD ENHANCED ADMIN PARTICIPANTS API ROUTE
+// ============================================================================
+// Add this route after your existing admin routes in server.js
+
+app.get('/api/admin/tournament/:id/participants-enhanced', requireAdmin, async (req, res) => {
+    try {
+        const tournamentId = req.params.id;
+        console.log('🔍 DEBUG: Getting enhanced participants for admin, tournament:', tournamentId);
+
+        // Get tournament info
+        const { data: tournament, error: tournamentError } = await supabase
+            .from('tournaments')
+            .select('id, name, team_mode, match_type')
+            .eq('id', tournamentId)
+            .single();
+
+        if (tournamentError) {
+            console.error('❌ DEBUG: Admin tournament fetch error:', tournamentError);
+            return res.status(404).json({ error: 'Tournament not found', details: tournamentError });
+        }
+
+        console.log('✅ DEBUG: Admin tournament found:', tournament.name);
+
+        const teamMode = tournament.team_mode || 'solo';
+        console.log('✅ DEBUG: Admin team mode:', teamMode);
+
+        if (teamMode === 'solo') {
+            console.log('🔍 DEBUG: Admin processing solo tournament...');
+            
+            const { data: participants, error: participantsError } = await supabase
+                .from('tournament_registrations')
+                .select(`
+                    users (
+                        id,
+                        username,
+                        email,
+                        wallet_balance,
+                        winnings_balance,
+                        is_admin
+                    )
+                `)
+                .eq('tournament_id', tournamentId);
+
+            if (participantsError) {
+                console.error('❌ DEBUG: Admin participants fetch error:', participantsError);
+                return res.status(500).json({ error: 'Failed to fetch participants', details: participantsError });
+            }
+
+            console.log('✅ DEBUG: Admin participants fetched:', participants.length);
+
+            const formattedParticipants = participants.map(reg => reg.users);
+
+            return res.json({
+                tournament,
+                participants: formattedParticipants,
+                teams: [],
+                totalPlayers: formattedParticipants.length
+            });
+        } else {
+            console.log('🔍 DEBUG: Admin processing team tournament...');
+            
+            // Check if teams exist
+            const { data: teamsCheck, error: teamsCheckError } = await supabase
+                .from('tournament_teams')
+                .select('id')
+                .eq('tournament_id', tournamentId)
+                .limit(1);
+
+            if (teamsCheckError) {
+                console.error('❌ DEBUG: Admin teams check error:', teamsCheckError);
+                
+                // Fallback to individual participants
+                const { data: participants, error: participantsError } = await supabase
+                    .from('tournament_registrations')
+                    .select(`
+                        users (
+                            id,
+                            username,
+                            email,
+                            wallet_balance,
+                            winnings_balance,
+                            is_admin
+                        )
+                    `)
+                    .eq('tournament_id', tournamentId);
+
+                if (participantsError) {
+                    console.error('❌ DEBUG: Admin fallback participants fetch error:', participantsError);
+                    return res.status(500).json({ error: 'Failed to fetch participants', details: participantsError });
+                }
+
+                const formattedParticipants = participants.map(reg => reg.users);
+
+                return res.json({
+                    tournament,
+                    participants: formattedParticipants,
+                    teams: [],
+                    totalPlayers: formattedParticipants.length,
+                    note: 'Displayed as individual participants due to team structure unavailable'
+                });
+            }
+
+            // Get teams with members
+            const { data: teams, error: teamsError } = await supabase
+                .from('tournament_teams')
+                .select(`
+                    id,
+                    team_name,
+                    tournament_team_members (
+                        role,
+                        ign,
+                        users (
+                            id,
+                            username,
+                            email,
+                            wallet_balance,
+                            winnings_balance,
+                            is_admin
+                        )
+                    )
+                `)
+                .eq('tournament_id', tournamentId);
+
+            if (teamsError) {
+                console.error('❌ DEBUG: Admin teams with members fetch error:', teamsError);
+                
+                // Final fallback
+                const { data: participants, error: participantsError } = await supabase
+                    .from('tournament_registrations')
+                    .select(`
+                        users (
+                            id,
+                            username,
+                            email,
+                            wallet_balance,
+                            winnings_balance,
+                            is_admin
+                        )
+                    `)
+                    .eq('tournament_id', tournamentId);
+
+                if (participantsError) {
+                    return res.status(500).json({ error: 'Failed to fetch any participant data', details: participantsError });
+                }
+
+                const formattedParticipants = participants.map(reg => reg.users);
+
+                return res.json({
+                    tournament,
+                    participants: formattedParticipants,
+                    teams: [],
+                    totalPlayers: formattedParticipants.length,
+                    note: 'Displayed as individual participants due to team data issues'
+                });
+            }
+
+            console.log('✅ DEBUG: Admin teams fetched:', teams.length);
+
+            const formattedTeams = teams.map(team => ({
+                team_id: team.id,
+                team_name: team.team_name,
+                players: team.tournament_team_members.map(member => ({
+                    ...member.users,
+                    role: member.role,
+                    ign: member.ign
+                }))
+            }));
+
+            const totalPlayers = formattedTeams.reduce((total, team) => total + team.players.length, 0);
+
+            return res.json({
+                tournament,
+                participants: [],
+                teams: formattedTeams,
+                totalPlayers
+            });
+        }
+
+    } catch (error) {
+        console.error('❌ DEBUG: Enhanced admin participants API critical error:', error);
+        console.error('❌ DEBUG: Error stack:', error.stack);
+        res.status(500).json({ 
+            error: 'Internal server error', 
+            details: error.message,
+            stack: error.stack 
+        });
+    }
+});
+
+
 // Enhanced admin tournament creation
 app.post('/api/admin/tournaments/enhanced', requireAdmin, async (req, res) => {
     const {
