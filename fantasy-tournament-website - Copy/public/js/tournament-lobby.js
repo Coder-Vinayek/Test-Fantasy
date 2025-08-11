@@ -75,7 +75,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Set up auto-refresh intervals
     setInterval(loadTournamentData, 30000);
     setInterval(loadChatMessages, 5000);
-    setInterval(loadPlayers, 30000);
+    if (typeof tournamentId !== 'undefined') {
+        setInterval(loadPlayers, 30000); // This will now use our enhanced version
+    }
     setInterval(loadAnnouncements, 15000);
     setInterval(updateTimeRemaining, 1000);
 
@@ -427,88 +429,52 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Rest of the existing functions remain the same...
     async function loadPlayers() {
-        console.log('👥 Loading players...');
+        console.log('👥 Loading players with REAL team data...');
         try {
-            // Use existing API endpoint
-            const response = await fetch(`/api/tournament/${tournamentId}/players`);
-            const players = await response.json();
-            console.log('✅ Players loaded:', players.length, 'players');
+            // FIXED: Use enhanced API endpoint that returns REAL team data
+            const response = await fetch('/api/tournament/' + tournamentId + '/players-enhanced');
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to load players');
+            }
+    
+            console.log('✅ FIXED: Enhanced players data loaded:', data);
     
             playersList.innerHTML = '';
     
-            if (players.length === 0) {
+            if (!data.players || data.players.length === 0) {
                 playersList.innerHTML = '<div class="no-players">No players found</div>';
                 return;
             }
     
-            // Get tournament info to determine team mode
-            const tournamentResponse = await fetch(`/api/tournament/${tournamentId}/lobby`);
-            const tournamentData = await tournamentResponse.json();
-            const tournament = tournamentData.tournament;
-            const teamMode = tournament.team_mode || 'solo';
+            const tournamentType = data.tournament_type || 'solo';
+            console.log('FIXED: Tournament type:', tournamentType);
     
-            console.log('Tournament mode:', teamMode);
-    
-            if (teamMode === 'solo') {
+            if (tournamentType === 'solo' || !data.teams || data.teams.length === 0) {
                 // Display individual players for solo tournaments
-                players.forEach(player => {
+                console.log('FIXED: Displaying', data.players.length, 'individual players');
+                data.players.forEach(function(player) {
                     const playerElement = createPlayerElement(player);
                     playersList.appendChild(playerElement);
                 });
             } else {
-                // For duo/squad, try to group players into mock teams
-                const teams = createMockTeams(players, teamMode);
-                console.log('Mock teams created:', teams.length);
-    
-                if (teams.length > 0) {
-                    teams.forEach(team => {
-                        const teamElement = createTeamElement(team, teamMode);
-                        playersList.appendChild(teamElement);
-                    });
-                } else {
-                    // Fallback to individual display
-                    players.forEach(player => {
-                        const playerElement = createPlayerElement(player);
-                        playersList.appendChild(playerElement);
-                    });
-                }
+                // FIXED: Display REAL teams with REAL team names from database
+                console.log('FIXED: Displaying', data.teams.length, 'REAL teams with actual names');
+                
+                data.teams.forEach(function(team) {
+                    console.log('FIXED: Team name from database:', team.team_name);
+                    const teamElement = createTeamElement(team, tournamentType);
+                    playersList.appendChild(teamElement);
+                });
             }
     
         } catch (error) {
             console.error('❌ Error loading players:', error);
-            showMessage('Failed to load players', 'error');
+            playersList.innerHTML = '<div class="error-players">Failed to load players. Please refresh.</div>';
         }
     }
     
-    /**
- * Create mock teams from individual players
- * This is a workaround when team data is not available
- */
-function createMockTeams(players, teamMode) {
-    const teamsPerGroup = teamMode === 'duo' ? 2 : 4;
-    const teams = [];
-    
-    // Group players into teams of appropriate size
-    for (let i = 0; i < players.length; i += teamsPerGroup) {
-        const teamPlayers = players.slice(i, i + teamsPerGroup);
-        
-        if (teamPlayers.length >= 2) { // At least 2 players for a team
-            const team = {
-                team_id: Math.floor(i / teamsPerGroup) + 1,
-                team_name: `Team ${Math.floor(i / teamsPerGroup) + 1}`,
-                players: teamPlayers.map((player, index) => ({
-                    ...player,
-                    role: index === 0 ? 'leader' : 'player',
-                    ign: player.username // Use username as IGN fallback
-                }))
-            };
-            teams.push(team);
-        }
-    }
-    
-    return teams;
-}
-
     // ============================================================================
     // ADD THIS NEW FUNCTION FOR TEAM DISPLAY
     // ============================================================================
@@ -516,64 +482,64 @@ function createMockTeams(players, teamMode) {
     function createTeamElement(team, tournamentType) {
         const teamDiv = document.createElement('div');
         teamDiv.className = 'team-item';
-        
-        const teamName = team.team_name || `Team ${team.team_id}`;
+    
+        // FIXED: Use REAL team name from database, NOT "Team 1", "Team 2"
+        const teamName = team.team_name || ('Team ' + team.team_id); // Fallback if no name
         const players = team.players || [];
-        const isOnline = players.some(p => p.is_online);
-        
+        const isOnline = players.some(function(p) { return p.is_online; });
+    
+        console.log('FIXED: Creating team element with REAL name:', teamName);
+    
         let playersHtml = '';
-        players.forEach((player, index) => {
-            const role = player.role === 'leader' ? '👑' : 
-                        player.role === 'substitute' ? '🔄' : '';
+        players.forEach(function(player, index) {
+            const role = player.role === 'leader' ? '👑' :
+                        player.role === 'substitute' ? '🔄' : '👤';
             const onlineStatus = player.is_online ? 'online' : 'offline';
-            
-            playersHtml += `
-                <div class="team-player ${onlineStatus}">
-                    <span class="player-name">${escapeHtml(player.username)} ${role}</span>
-                    <span class="player-ign">${escapeHtml(player.ign || player.username)}</span>
-                    <span class="player-status-dot ${onlineStatus}"></span>
-                </div>
-            `;
+    
+            playersHtml += 
+                '<div class="team-player ' + onlineStatus + '">' +
+                    '<span class="player-name">' + escapeHtml(player.username) + ' ' + role + '</span>' +
+                    '<span class="player-ign">' + escapeHtml(player.ign || player.username) + '</span>' +
+                    '<span class="player-status-dot ' + onlineStatus + '"></span>' +
+                '</div>';
         });
     
-        teamDiv.innerHTML = `
-            <div class="team-header ${isOnline ? 'team-online' : 'team-offline'}">
-                <div class="team-info">
-                    <h4 class="team-name">${escapeHtml(teamName)}</h4>
-                    <span class="team-meta">${players.length} players</span>
-                </div>
-                <div class="team-status">
-                    <span class="status-indicator ${isOnline ? 'online' : 'offline'}"></span>
-                </div>
-            </div>
-            <div class="team-players">
-                ${playersHtml}
-            </div>
-        `;
+        teamDiv.innerHTML = 
+            '<div class="team-header ' + (isOnline ? 'team-online' : 'team-offline') + '">' +
+                '<div class="team-info">' +
+                    '<h4 class="team-name">' + escapeHtml(teamName) + '</h4>' +
+                    '<span class="team-meta">' + players.length + ' players</span>' +
+                '</div>' +
+                '<div class="team-status">' +
+                    '<span class="status-indicator ' + (isOnline ? 'online' : 'offline') + '"></span>' +
+                '</div>' +
+            '</div>' +
+            '<div class="team-players">' +
+                playersHtml +
+            '</div>';
     
         return teamDiv;
     }
 
     function createPlayerElement(player) {
         const playerDiv = document.createElement('div');
-        playerDiv.className = `player-item ${player.is_online ? 'online' : 'offline'}`;
-
-        const joinDate = new Date(player.registration_date).toLocaleDateString();
-
-        playerDiv.innerHTML = `
-            <div class="player-avatar">
-                <span class="player-initial">${player.username.charAt(0).toUpperCase()}</span>
-                <span class="player-status ${player.is_online ? 'online' : 'offline'}"></span>
-            </div>
-            <div class="player-info">
-                <div class="player-name">${player.username}${player.is_admin ? ' 👑' : ''}</div>
-                <div class="player-meta">
-                    <span class="join-date">Joined: ${joinDate}</span>
-                    <span class="player-balance">$${player.wallet_balance.toFixed(2)}</span>
-                </div>
-            </div>
-        `;
-
+        playerDiv.className = 'player-item ' + (player.is_online ? 'online' : 'offline');
+    
+        const joinDate = new Date(player.registration_date || player.created_at).toLocaleDateString();
+    
+        playerDiv.innerHTML = 
+            '<div class="player-avatar">' +
+                '<span class="player-initial">' + player.username.charAt(0).toUpperCase() + '</span>' +
+                '<span class="player-status ' + (player.is_online ? 'online' : 'offline') + '"></span>' +
+            '</div>' +
+            '<div class="player-info">' +
+                '<div class="player-name">' + escapeHtml(player.username) + (player.is_admin ? ' 👑' : '') + '</div>' +
+                '<div class="player-meta">' +
+                    '<span class="join-date">Joined: ' + joinDate + '</span>' +
+                    '<span class="player-balance">₹' + parseFloat(player.wallet_balance || 0).toFixed(2) + '</span>' +
+                '</div>' +
+            '</div>';
+    
         return playerDiv;
     }
 
@@ -677,8 +643,9 @@ function createMockTeams(players, teamMode) {
     }
 
     function escapeHtml(text) {
+        if (!text) return '';
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
-    }
+    }    
 });
