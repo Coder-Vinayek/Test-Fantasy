@@ -827,105 +827,126 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Enhanced function to view tournament participants with team grouping
     function viewTournamentParticipantsEnhanced(tournamentId) {
-    console.log('🔍 FIXED: Starting enhanced participants view for tournament:', tournamentId);
+        console.log('🔍 FIXED: Starting enhanced participants view for tournament:', tournamentId);
     
-    // Get tournament info first
-    fetch('/api/admin/tournaments')
-        .then(function(response) { return response.json(); })
-        .then(function(tournaments) {
-            const tournament = tournaments.find(function(t) { return t.id == tournamentId; });
-            if (!tournament) {
-                alert('Tournament not found');
-                return;
-            }
-
-            console.log('✅ FIXED: Tournament found:', tournament.name);
-
-            // FIXED: Use enhanced API endpoint that gets REAL team data
-            return fetch('/api/admin/tournament/' + tournamentId + '/participants-enhanced')
-                .then(function(response) { 
-                    console.log('📡 FIXED: API response status:', response.status);
-                    return response.json(); 
-                })
-                .then(function(data) {
-                    console.log('📊 FIXED: Raw API data received:', data);
-                    
-                    if (!data || data.error) {
-                        console.error('❌ FIXED: API error:', data.error);
-                        alert('Error loading participants: ' + (data.error || 'Unknown error'));
-                        return;
-                    }
-
-                    // FIXED: Debug the structure
-                    console.log('🔍 FIXED: Data structure check:');
-                    console.log('- Tournament:', data.tournament);
-                    console.log('- Participants array:', data.participants);
-                    console.log('- Teams array:', data.teams);
-                    console.log('- Total players:', data.totalPlayers);
-                    
-                    if (data.teams && data.teams.length > 0) {
-                        console.log('👥 FIXED: Teams details:');
-                        data.teams.forEach(function(team, index) {
-                            console.log('  Team ' + index + ':', {
-                                id: team.team_id,
-                                name: team.team_name,
-                                playerCount: team.players ? team.players.length : 0,
-                                players: team.players
+        // Get tournament info first
+        fetch('/api/admin/tournaments')
+            .then(function(response) { 
+                if (!response.ok) {
+                    throw new Error('Failed to fetch tournaments');
+                }
+                return response.json(); 
+            })
+            .then(function(tournaments) {
+                const tournament = tournaments.find(function(t) { return t.id == tournamentId; });
+                if (!tournament) {
+                    alert('Tournament not found');
+                    return;
+                }
+    
+                console.log('✅ FIXED: Tournament found:', tournament.name);
+    
+                // FIXED: Use enhanced API endpoint that gets REAL team data
+                return fetch('/api/admin/tournament/' + tournamentId + '/participants-enhanced')
+                    .then(function(response) {
+                        console.log('📡 FIXED: API response status:', response.status);
+                        if (!response.ok) {
+                            throw new Error('HTTP ' + response.status + ': ' + response.statusText);
+                        }
+                        return response.json();
+                    })
+                    .then(function(data) {
+                        console.log('📊 FIXED: Raw API data received:', data);
+    
+                        if (!data || data.error) {
+                            console.error('❌ FIXED: API error:', data.error);
+                            alert('Error loading participants: ' + (data.error || 'Unknown error'));
+                            return;
+                        }
+    
+                        // FIXED: Debug the structure with proper null checks
+                        console.log('🔍 FIXED: Data structure check:');
+                        console.log('- Tournament:', data.tournament);
+                        console.log('- Participants array:', data.participants);
+                        console.log('- Teams array:', data.teams);
+                        console.log('- Total players:', data.totalPlayers);
+    
+                        // FIXED: Ensure teams is an array
+                        const teams = Array.isArray(data.teams) ? data.teams : [];
+                        const participants = Array.isArray(data.participants) ? data.participants : [];
+    
+                        if (teams.length > 0) {
+                            console.log('👥 FIXED: Teams details:');
+                            teams.forEach(function(team, index) {
+                                console.log('  Team ' + index + ':', {
+                                    id: team.team_id,
+                                    name: team.team_name,
+                                    playerCount: team.players ? team.players.length : 0,
+                                    players: team.players
+                                });
                             });
-                        });
-                    }
-
-                    // FIXED: Use REAL team data from database instead of mock teams
-                    const modalData = {
-                        tournament: tournament,
-                        participants: data.participants || [],
-                        teams: data.teams || [], // REAL teams from database
-                        totalPlayers: data.totalPlayers || (data.participants ? data.participants.length : 0)
-                    };
-
-                    console.log('🎯 FIXED: Final modal data:', modalData);
-
-                    // Create and show modal
-                    const modal = document.createElement('div');
-                    modal.className = 'participants-modal';
-                    
-                    try {
-                        modal.innerHTML = createParticipantsModalHTML(modalData);
-                        console.log('✅ FIXED: Modal HTML created successfully');
-                    } catch (htmlError) {
-                        console.error('❌ FIXED: Error creating modal HTML:', htmlError);
-                        alert('Error creating modal: ' + htmlError.message);
-                        return;
-                    }
-                    
-                    document.body.appendChild(modal);
-                    modal.style.display = 'block';
-                    
-                    console.log('✅ FIXED: Modal displayed successfully');
-                });
-        })
-        .catch(function(error) {
-            console.error('❌ FIXED: Error in participants view:', error);
-            alert('Failed to load participants: ' + error.message);
-        });
-}
-
-    // Create modal HTML with team support
-    function createParticipantsModalHTML(data) {
-        const tournament = data.tournament;
-        const tournamentType = tournament.team_mode || 'solo';
+                        }
     
-        console.log('FIXED: Creating modal with data:', data);
-        console.log('FIXED: Teams array:', data.teams);
-        console.log('FIXED: Teams length:', data.teams ? data.teams.length : 0);
+                        // FIXED: Use REAL team data from database instead of mock teams
+                        const modalData = {
+                            tournament: tournament,
+                            participants: participants,
+                            teams: teams, // REAL teams from database
+                            totalPlayers: data.totalPlayers || participants.length
+                        };
+    
+                        console.log('🎯 FIXED: Final modal data:', modalData);
+    
+                        // Create and show modal
+                        const modal = document.createElement('div');
+                        modal.className = 'participants-modal';
+    
+                        try {
+                            modal.innerHTML = createParticipantsModalHTML(modalData);
+                            console.log('✅ FIXED: Modal HTML created successfully');
+                        } catch (htmlError) {
+                            console.error('❌ FIXED: Error creating modal HTML:', htmlError);
+                            alert('Error creating modal: ' + htmlError.message);
+                            return;
+                        }
+    
+                        document.body.appendChild(modal);
+                        modal.style.display = 'block';
+    
+                        console.log('✅ FIXED: Modal displayed successfully');
+                    })
+                    .catch(function(error) {
+                        console.error('❌ FIXED: API error:', error);
+                        alert('Failed to load participants: ' + error.message);
+                    });
+            })
+            .catch(function(error) {
+                console.error('❌ FIXED: Error in participants view:', error);
+                alert('Failed to load tournament: ' + error.message);
+            });
+    }
+    
+    // FIXED: Create modal HTML with proper error handling and team support
+    function createParticipantsModalHTML(data) {
+        const tournament = data.tournament || {};
+        const tournamentType = tournament.team_mode || 'solo';
+        const teams = Array.isArray(data.teams) ? data.teams : [];
+        const participants = Array.isArray(data.participants) ? data.participants : [];
+    
+        console.log('FIXED: Creating modal with data:', {
+            tournamentName: tournament.name,
+            tournamentType: tournamentType,
+            teamsCount: teams.length,
+            participantsCount: participants.length
+        });
     
         let participantsHTML = '';
     
-        if (tournamentType === 'solo' || !data.teams || data.teams.length === 0) {
+        if (tournamentType === 'solo' || teams.length === 0) {
             // Show individual participants
             console.log('FIXED: Showing individual participants');
     
-            if (!data.participants || data.participants.length === 0) {
+            if (participants.length === 0) {
                 participantsHTML = '<div class="no-participants">No participants found</div>';
             } else {
                 participantsHTML =
@@ -941,14 +962,19 @@ document.addEventListener('DOMContentLoaded', function () {
                             '</tr>' +
                         '</thead>' +
                         '<tbody>' +
-                            data.participants.map(function(participant) {
+                            participants.map(function(participant) {
+                                const walletBalance = participant.wallet_balance || 0;
+                                const winningsBalance = participant.winnings_balance || 0;
+                                const regDate = participant.registration_date || participant.created_at || '';
+                                const formattedDate = regDate ? new Date(regDate).toLocaleDateString() : 'Unknown';
+                                
                                 return '<tr>' +
-                                    '<td>' + participant.id + '</td>' +
-                                    '<td>' + escapeHtml(participant.username) + '</td>' +
-                                    '<td>' + escapeHtml(participant.email) + '</td>' +
-                                    '<td>₹' + parseFloat(participant.wallet_balance || 0).toFixed(2) + '</td>' +
-                                    '<td>₹' + parseFloat(participant.winnings_balance || 0).toFixed(2) + '</td>' +
-                                    '<td>' + new Date(participant.registration_date || participant.created_at).toLocaleDateString() + '</td>' +
+                                    '<td>' + (participant.id || 'N/A') + '</td>' +
+                                    '<td>' + escapeHtml(participant.username || 'Unknown') + '</td>' +
+                                    '<td>' + escapeHtml(participant.email || 'Unknown') + '</td>' +
+                                    '<td>₹' + parseFloat(walletBalance).toFixed(2) + '</td>' +
+                                    '<td>₹' + parseFloat(winningsBalance).toFixed(2) + '</td>' +
+                                    '<td>' + formattedDate + '</td>' +
                                 '</tr>';
                             }).join('') +
                         '</tbody>' +
@@ -956,18 +982,20 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         } else {
             // Show REAL teams with REAL team names from database
-            console.log('FIXED: Showing teams, count:', data.teams.length);
+            console.log('FIXED: Showing teams, count:', teams.length);
     
             // FIXED: Debug each team
-            data.teams.forEach(function(team, index) {
-                console.log('FIXED: Team ' + index + ':', team);
-                console.log('FIXED: Team name:', team.team_name);
-                console.log('FIXED: Players:', team.players);
+            teams.forEach(function(team, index) {
+                console.log('FIXED: Team ' + index + ':', {
+                    team_id: team.team_id,
+                    team_name: team.team_name,
+                    players_count: team.players ? team.players.length : 0
+                });
             });
     
             participantsHTML =
                 '<div class="team-notice" style="background: #d4edda; padding: 10px; margin-bottom: 15px; border-radius: 5px; border-left: 4px solid #28a745;">' +
-                    '<strong>✅ SUCCESS:</strong> Showing ' + data.teams.length + ' team(s) with ' + data.totalPlayers + ' total players.' +
+                    '<strong>✅ SUCCESS:</strong> Showing ' + teams.length + ' team(s) with ' + (data.totalPlayers || 0) + ' total players.' +
                 '</div>' +
                 '<table class="participants-table">' +
                     '<thead>' +
@@ -984,35 +1012,42 @@ document.addEventListener('DOMContentLoaded', function () {
                     '<tbody>';
     
             // FIXED: Process each team properly
-            data.teams.forEach(function(team) {
-                console.log('FIXED: Processing team:', team.team_name);
+            teams.forEach(function(team) {
+                const teamName = team.team_name || ('Team ' + team.team_id);
+                const players = Array.isArray(team.players) ? team.players : [];
+                
+                console.log('FIXED: Processing team:', teamName, 'with', players.length, 'players');
     
                 // Team header row
                 participantsHTML +=
                     '<tr class="team-row">' +
                         '<td class="team-name-cell" colspan="7" style="background: #f8f9fa; font-weight: bold; padding: 10px;">' +
-                            '🏆 ' + escapeHtml(team.team_name) + ' (' + (team.players ? team.players.length : 0) + ' players)' +
+                            '🏆 ' + escapeHtml(teamName) + ' (' + players.length + ' players)' +
                         '</td>' +
                     '</tr>';
     
                 // Team players
-                if (team.players && team.players.length > 0) {
-                    team.players.forEach(function(player) {
-                        console.log('FIXED: Processing player:', player.username);
+                if (players.length > 0) {
+                    players.forEach(function(player) {
+                        console.log('FIXED: Processing player:', player.username || 'Unknown');
     
-                        const roleClass = player.role === 'leader' ? 'leader' : '';
-                        const roleIcon = player.role === 'leader' ? '👑' :
-                                        player.role === 'substitute' ? '🔄' : '👤';
+                        const role = player.role || 'player';
+                        const roleClass = role === 'leader' ? 'leader' : '';
+                        const roleIcon = role === 'leader' ? '👑' :
+                                       role === 'substitute' ? '🔄' : '👤';
+    
+                        const walletBalance = player.wallet_balance || 0;
+                        const winningsBalance = player.winnings_balance || 0;
     
                         participantsHTML +=
                             '<tr class="team-member-row">' +
                                 '<td style="padding-left: 20px;">├─ ' + roleIcon + '</td>' +
                                 '<td>' + escapeHtml(player.username || 'Unknown') + '</td>' +
-                                '<td><span class="member-role ' + roleClass + '">' + (player.role || 'player') + '</span></td>' +
+                                '<td><span class="member-role ' + roleClass + '">' + role + '</span></td>' +
                                 '<td>' + escapeHtml(player.ign || player.username || 'Unknown') + '</td>' +
                                 '<td>' + escapeHtml(player.email || 'Unknown') + '</td>' +
-                                '<td>₹' + parseFloat(player.wallet_balance || 0).toFixed(2) + '</td>' +
-                                '<td>₹' + parseFloat(player.winnings_balance || 0).toFixed(2) + '</td>' +
+                                '<td>₹' + parseFloat(walletBalance).toFixed(2) + '</td>' +
+                                '<td>₹' + parseFloat(winningsBalance).toFixed(2) + '</td>' +
                             '</tr>';
                     });
                 } else {
@@ -1028,20 +1063,26 @@ document.addEventListener('DOMContentLoaded', function () {
                 '</table>';
         }
     
+        // FIXED: Safe tournament name handling
+        const tournamentName = tournament.name || 'Unknown Tournament';
+        const totalCount = tournamentType === 'solo' 
+            ? participants.length 
+            : teams.length;
+        const totalPlayersCount = data.totalPlayers || participants.length;
+    
         return
             '<div class="modal-overlay" onclick="closeParticipantsModal()">' +
                 '<div class="modal-content participants-modal-content" onclick="event.stopPropagation()">' +
                     '<div class="modal-header">' +
-                        '<h3>Participants: ' + escapeHtml(tournament.name) + '</h3>' +
+                        '<h3>Participants: ' + escapeHtml(tournamentName) + '</h3>' +
                         '<span class="tournament-mode-badge">' + tournamentType.toUpperCase() + '</span>' +
                         '<button class="modal-close" onclick="closeParticipantsModal()" type="button" style="cursor: pointer; background: none; border: none; font-size: 24px; color: #666; float: right;">&times;</button>' +
                     '</div>' +
                     '<div class="modal-body">' +
                         '<div class="participants-summary">' +
                             '<p><strong>Tournament Mode:</strong> ' + tournamentType + '</p>' +
-                            '<p><strong>Total ' + (tournamentType === 'solo' ? 'Players' : 'Teams') + ':</strong> ' +
-                               (tournamentType === 'solo' ? (data.participants ? data.participants.length : 0) : (data.teams ? data.teams.length : 0)) + '</p>' +
-                            (tournamentType !== 'solo' ? '<p><strong>Total Players:</strong> ' + (data.totalPlayers || 0) + '</p>' : '') +
+                            '<p><strong>Total ' + (tournamentType === 'solo' ? 'Players' : 'Teams') + ':</strong> ' + totalCount + '</p>' +
+                            (tournamentType !== 'solo' ? '<p><strong>Total Players:</strong> ' + totalPlayersCount + '</p>' : '') +
                         '</div>' +
                         '<div class="participants-list">' +
                             participantsHTML +
@@ -1054,6 +1095,7 @@ document.addEventListener('DOMContentLoaded', function () {
             '</div>';
     }
     
+    
     // Close modal function
     function closeParticipantsModal() {
         const modal = document.querySelector('.participants-modal');
@@ -1061,14 +1103,18 @@ document.addEventListener('DOMContentLoaded', function () {
             // Add fade out animation
             modal.style.opacity = '0';
             setTimeout(function() {
-                modal.remove();
+                try {
+                    modal.remove();
+                } catch (error) {
+                    console.warn('Modal was already removed');
+                }
             }, 300);
         }
     }
     
     // Utility function
     function escapeHtml(text) {
-        if (!text) return '';
+        if (!text || text === null || text === undefined) return '';
         if (typeof text !== 'string') return String(text);
         const div = document.createElement('div');
         div.textContent = text;
