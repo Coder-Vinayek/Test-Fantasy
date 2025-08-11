@@ -85,6 +85,24 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }, 30000);
 
+        // FIXED: Enhanced modal handling
+        window.addEventListener('click', function(event) {
+            const participantsModal = document.querySelector('.participants-modal');
+            if (participantsModal && event.target === participantsModal.querySelector('.modal-overlay')) {
+                closeParticipantsModal();
+            }
+        });
+    
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                const participantsModal = document.querySelector('.participants-modal');
+                if (participantsModal) {
+                    closeParticipantsModal();
+                }
+            }
+        });
+    
+
     // ADMIN SESSION MANAGEMENT
     async function checkAdminSession() {
         try {
@@ -711,48 +729,51 @@ document.addEventListener('DOMContentLoaded', function () {
     function createTournamentRow(tournament) {
         const row = document.createElement('tr');
         const startDate = new Date(tournament.start_date).toLocaleDateString();
-
-        row.innerHTML = `
-            <td>${tournament.id}</td>
-            <td>${tournament.name}</td>
-            <td>$${tournament.entry_fee}</td>
-            <td>$${tournament.prize_pool}</td>
-            <td>${tournament.current_participants}/${tournament.max_participants}</td>
-            <td><span class="tournament-status status-${tournament.status}">${tournament.status}</span></td>
-            <td>${startDate}</td>
-            <td class="tournament-actions-cell">
-                <div class="tournament-actions-group">
-                    <button class="btn btn-small btn-primary view-participants-btn"
-                            data-tournament-id="${tournament.id}"
-                            data-tournament-name="${tournament.name}">
-                        👥 View Participants (${tournament.current_participants})
-                    </button>
-                    <button class="btn btn-small btn-danger delete-tournament-btn"
-                            data-tournament-id="${tournament.id}"
-                            data-tournament-name="${tournament.name}">
-                        🗑️ Delete Tournament
-                    </button>
-                </div>
-            </td>
-        `;
-
-        // Existing view participants button event listener
+    
+        row.innerHTML = 
+            '<td>' + tournament.id + '</td>' +
+            '<td>' + tournament.name + '</td>' +
+            '<td>₹' + tournament.entry_fee + '</td>' +
+            '<td>₹' + tournament.prize_pool + '</td>' +
+            '<td>' + tournament.current_participants + '/' + tournament.max_participants + '</td>' +
+            '<td><span class="tournament-status status-' + tournament.status + '">' + tournament.status + '</span></td>' +
+            '<td>' + startDate + '</td>' +
+            '<td class="tournament-actions-cell">' +
+                '<div class="tournament-actions-group">' +
+                    '<button class="btn btn-small btn-primary view-participants-btn" ' +
+                            'data-tournament-id="' + tournament.id + '" ' +
+                            'data-tournament-name="' + tournament.name + '">' +
+                        '👥 View Participants (' + tournament.current_participants + ')' +
+                    '</button>' +
+                    '<button class="btn btn-small btn-danger delete-tournament-btn" ' +
+                            'data-tournament-id="' + tournament.id + '" ' +
+                            'data-tournament-name="' + tournament.name + '">' +
+                        '🗑️ Delete Tournament' +
+                    '</button>' +
+                '</div>' +
+            '</td>';
+    
+        // FIXED: View participants button with enhanced functionality
         const viewBtn = row.querySelector('.view-participants-btn');
-        viewBtn.addEventListener('click', function () {
-            const tournamentId = this.getAttribute('data-tournament-id');
-            const tournamentName = this.getAttribute('data-tournament-name');
-            viewTournamentParticipantsEnhanced(tournamentId, tournamentName);
-        });
-
-        // Simple delete tournament button event listener
+        if (viewBtn) {
+            viewBtn.addEventListener('click', function() {
+                const tournamentId = this.getAttribute('data-tournament-id');
+                const tournamentName = this.getAttribute('data-tournament-name');
+                console.log('FIXED: Opening enhanced participants view for:', tournamentName);
+                viewTournamentParticipantsEnhanced(tournamentId, tournamentName);
+            });
+        }
+    
+        // Delete tournament button (unchanged)
         const deleteBtn = row.querySelector('.delete-tournament-btn');
-        deleteBtn.addEventListener('click', function () {
-            const tournamentId = this.getAttribute('data-tournament-id');
-            const tournamentName = this.getAttribute('data-tournament-name');
-
-            confirmDeleteTournament(tournamentId, tournamentName);
-        });
-
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', function() {
+                const tournamentId = this.getAttribute('data-tournament-id');
+                const tournamentName = this.getAttribute('data-tournament-name');
+                confirmDeleteTournament(tournamentId, tournamentName);
+            });
+        }
+    
         return row;
     }
 
@@ -806,48 +827,86 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Enhanced function to view tournament participants with team grouping
     function viewTournamentParticipantsEnhanced(tournamentId) {
-        // First get tournament info
+        console.log('🔍 FIXED: Starting enhanced participants view for tournament:', tournamentId);
+        
+        // Get tournament info first
         fetch('/api/admin/tournaments')
-            .then(response => response.json())
-            .then(tournaments => {
-                const tournament = tournaments.find(t => t.id == tournamentId);
+            .then(function(response) { return response.json(); })
+            .then(function(tournaments) {
+                const tournament = tournaments.find(function(t) { return t.id == tournamentId; });
                 if (!tournament) {
                     alert('Tournament not found');
                     return;
                 }
     
-                // Then get participants using existing API
-                return fetch('/api/admin/tournament/' + tournamentId + '/participants')
-                    .then(response => response.json())
-                    .then(participants => {
-                        if (!participants || participants.error) {
-                            alert('Error loading participants: ' + (participants.error || 'Unknown error'));
+                console.log('✅ FIXED: Tournament found:', tournament.name);
+    
+                // FIXED: Use enhanced API endpoint that gets REAL team data
+                return fetch('/api/admin/tournament/' + tournamentId + '/participants-enhanced')
+                    .then(function(response) { 
+                        console.log('📡 FIXED: API response status:', response.status);
+                        return response.json(); 
+                    })
+                    .then(function(data) {
+                        console.log('📊 FIXED: Raw API data received:', data);
+                        
+                        if (!data || data.error) {
+                            console.error('❌ FIXED: API error:', data.error);
+                            alert('Error loading participants: ' + (data.error || 'Unknown error'));
                             return;
                         }
     
-                        const data = {
+                        // FIXED: Debug the structure
+                        console.log('🔍 FIXED: Data structure check:');
+                        console.log('- Tournament:', data.tournament);
+                        console.log('- Participants array:', data.participants);
+                        console.log('- Teams array:', data.teams);
+                        console.log('- Total players:', data.totalPlayers);
+                        
+                        if (data.teams && data.teams.length > 0) {
+                            console.log('👥 FIXED: Teams details:');
+                            data.teams.forEach(function(team, index) {
+                                console.log('  Team ' + index + ':', {
+                                    id: team.team_id,
+                                    name: team.team_name,
+                                    playerCount: team.players ? team.players.length : 0,
+                                    players: team.players
+                                });
+                            });
+                        }
+    
+                        // FIXED: Use REAL team data from database instead of mock teams
+                        const modalData = {
                             tournament: tournament,
-                            participants: participants,
-                            teams: [],
-                            totalPlayers: participants.length
+                            participants: data.participants || [],
+                            teams: data.teams || [], // REAL teams from database
+                            totalPlayers: data.totalPlayers || (data.participants ? data.participants.length : 0)
                         };
     
-                        // If it's a team tournament, try to create mock teams
-                        if (tournament.team_mode && tournament.team_mode !== 'solo') {
-                            data.teams = createAdminMockTeams(participants, tournament.team_mode);
-                        }
+                        console.log('🎯 FIXED: Final modal data:', modalData);
     
                         // Create and show modal
                         const modal = document.createElement('div');
                         modal.className = 'participants-modal';
-                        modal.innerHTML = createParticipantsModalHTML(data);
+                        
+                        try {
+                            modal.innerHTML = createParticipantsModalHTML(modalData);
+                            console.log('✅ FIXED: Modal HTML created successfully');
+                        } catch (htmlError) {
+                            console.error('❌ FIXED: Error creating modal HTML:', htmlError);
+                            alert('Error creating modal: ' + htmlError.message);
+                            return;
+                        }
+                        
                         document.body.appendChild(modal);
                         modal.style.display = 'block';
+                        
+                        console.log('✅ FIXED: Modal displayed successfully');
                     });
             })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Failed to load participants');
+            .catch(function(error) {
+                console.error('❌ FIXED: Error in participants view:', error);
+                alert('Failed to load participants: ' + error.message);
             });
     }
 
@@ -883,127 +942,167 @@ function createAdminMockTeams(participants, teamMode) {
     function createParticipantsModalHTML(data) {
         const tournament = data.tournament;
         const tournamentType = tournament.team_mode || 'solo';
-        
+    
+        console.log('FIXED: Creating modal with data:', data);
+        console.log('FIXED: Teams array:', data.teams);
+        console.log('FIXED: Teams length:', data.teams ? data.teams.length : 0);
+    
         let participantsHTML = '';
     
-        if (tournamentType === 'solo' || data.teams.length === 0) {
+        if (tournamentType === 'solo' || !data.teams || data.teams.length === 0) {
             // Show individual participants
-            participantsHTML = `
-                <table class="participants-table">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Username</th>
-                            <th>Email</th>
-                            <th>Wallet Balance</th>
-                            <th>Winnings Balance</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${data.participants.map(participant => `
-                            <tr>
-                                <td>${participant.id}</td>
-                                <td>${escapeHtml(participant.username)}</td>
-                                <td>${escapeHtml(participant.email)}</td>
-                                <td>₹${participant.wallet_balance.toFixed(2)}</td>
-                                <td>₹${participant.winnings_balance.toFixed(2)}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            `;
+            console.log('FIXED: Showing individual participants');
+            
+            if (!data.participants || data.participants.length === 0) {
+                participantsHTML = '<div class="no-participants">No participants found</div>';
+            } else {
+                participantsHTML = 
+                    '<table class="participants-table">' +
+                        '<thead>' +
+                            '<tr>' +
+                                '<th>ID</th>' +
+                                '<th>Username</th>' +
+                                '<th>Email</th>' +
+                                '<th>Wallet Balance</th>' +
+                                '<th>Winnings Balance</th>' +
+                                '<th>Registration Date</th>' +
+                            '</tr>' +
+                        '</thead>' +
+                        '<tbody>' +
+                            data.participants.map(function(participant) {
+                                return '<tr>' +
+                                    '<td>' + participant.id + '</td>' +
+                                    '<td>' + escapeHtml(participant.username) + '</td>' +
+                                    '<td>' + escapeHtml(participant.email) + '</td>' +
+                                    '<td>₹' + parseFloat(participant.wallet_balance || 0).toFixed(2) + '</td>' +
+                                    '<td>₹' + parseFloat(participant.winnings_balance || 0).toFixed(2) + '</td>' +
+                                    '<td>' + new Date(participant.registration_date || participant.created_at).toLocaleDateString() + '</td>' +
+                                '</tr>';
+                            }).join('') +
+                        '</tbody>' +
+                    '</table>';
+            }
         } else {
-            // Show teams (mock teams)
-            participantsHTML = `
-                <div class="team-notice" style="background: #fff3cd; padding: 10px; margin-bottom: 15px; border-radius: 5px; border-left: 4px solid #ffc107;">
-                    <strong>Note:</strong> Teams are grouped automatically based on registration order. For actual team data, implement team registration system.
-                </div>
-                <table class="participants-table">
-                    <thead>
-                        <tr>
-                            <th>Team/Player</th>
-                            <th>Username</th>
-                            <th>Role</th>
-                            <th>Email</th>
-                            <th>Wallet Balance</th>
-                            <th>Winnings Balance</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${data.teams.map(team => {
-                            let teamHTML = `
-                                <tr class="team-row">
-                                    <td class="team-name-cell" colspan="6">
-                                        🏆 ${escapeHtml(team.team_name)}
-                                    </td>
-                                </tr>
-                            `;
-                            
-                            team.players.forEach(player => {
-                                const roleClass = player.role === 'leader' ? 'leader' : '';
-                                const roleIcon = player.role === 'leader' ? '👑' : '👤';
-                                
-                                teamHTML += `
-                                    <tr class="team-member-row">
-                                        <td>  ├─ ${roleIcon}</td>
-                                        <td>${escapeHtml(player.username)}</td>
-                                        <td><span class="member-role ${roleClass}">${player.role}</span></td>
-                                        <td>${escapeHtml(player.email)}</td>
-                                        <td>₹${player.wallet_balance.toFixed(2)}</td>
-                                        <td>₹${player.winnings_balance.toFixed(2)}</td>
-                                    </tr>
-                                `;
-                            });
-                            
-                            return teamHTML;
-                        }).join('')}
-                    </tbody>
-                </table>
-            `;
+            // Show REAL teams with REAL team names from database
+            console.log('FIXED: Showing teams, count:', data.teams.length);
+            
+            // FIXED: Debug each team
+            data.teams.forEach(function(team, index) {
+                console.log('FIXED: Team ' + index + ':', team);
+                console.log('FIXED: Team name:', team.team_name);
+                console.log('FIXED: Players:', team.players);
+            });
+            
+            participantsHTML = 
+                '<div class="team-notice" style="background: #d4edda; padding: 10px; margin-bottom: 15px; border-radius: 5px; border-left: 4px solid #28a745;">' +
+                    '<strong>✅ SUCCESS:</strong> Showing ' + data.teams.length + ' team(s) with ' + data.totalPlayers + ' total players.' +
+                '</div>' +
+                '<table class="participants-table">' +
+                    '<thead>' +
+                        '<tr>' +
+                            '<th>Team/Player</th>' +
+                            '<th>Username</th>' +
+                            '<th>Role</th>' +
+                            '<th>IGN</th>' +
+                            '<th>Email</th>' +
+                            '<th>Wallet Balance</th>' +
+                            '<th>Winnings Balance</th>' +
+                        '</tr>' +
+                    '</thead>' +
+                    '<tbody>';
+    
+            // FIXED: Process each team properly
+            data.teams.forEach(function(team) {
+                console.log('FIXED: Processing team:', team.team_name);
+                
+                // Team header row
+                participantsHTML += 
+                    '<tr class="team-row">' +
+                        '<td class="team-name-cell" colspan="7" style="background: #f8f9fa; font-weight: bold; padding: 10px;">' +
+                            '🏆 ' + escapeHtml(team.team_name) + ' (' + (team.players ? team.players.length : 0) + ' players)' +
+                        '</td>' +
+                    '</tr>';
+    
+                // Team players
+                if (team.players && team.players.length > 0) {
+                    team.players.forEach(function(player) {
+                        console.log('FIXED: Processing player:', player.username);
+                        
+                        const roleClass = player.role === 'leader' ? 'leader' : '';
+                        const roleIcon = player.role === 'leader' ? '👑' : 
+                                        player.role === 'substitute' ? '🔄' : '👤';
+    
+                        participantsHTML += 
+                            '<tr class="team-member-row">' +
+                                '<td style="padding-left: 20px;">├─ ' + roleIcon + '</td>' +
+                                '<td>' + escapeHtml(player.username || 'Unknown') + '</td>' +
+                                '<td><span class="member-role ' + roleClass + '">' + (player.role || 'player') + '</span></td>' +
+                                '<td>' + escapeHtml(player.ign || player.username || 'Unknown') + '</td>' +
+                                '<td>' + escapeHtml(player.email || 'Unknown') + '</td>' +
+                                '<td>₹' + parseFloat(player.wallet_balance || 0).toFixed(2) + '</td>' +
+                                '<td>₹' + parseFloat(player.winnings_balance || 0).toFixed(2) + '</td>' +
+                            '</tr>';
+                    });
+                } else {
+                    participantsHTML += 
+                        '<tr class="team-member-row">' +
+                            '<td colspan="7" style="padding-left: 20px; color: #666; font-style: italic;">No players found for this team</td>' +
+                        '</tr>';
+                }
+            });
+    
+            participantsHTML += 
+                    '</tbody>' +
+                '</table>';
         }
     
-        return `
-            <div class="modal-overlay" onclick="closeParticipantsModal()">
-                <div class="modal-content participants-modal-content" onclick="event.stopPropagation()">
-                    <div class="modal-header">
-                        <h3>Participants: ${escapeHtml(tournament.name)}</h3>
-                        <span class="tournament-mode-badge">${tournamentType.toUpperCase()}</span>
-                        <button class="modal-close" onclick="closeParticipantsModal()">&times;</button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="participants-summary">
-                            <p><strong>Tournament Mode:</strong> ${tournamentType}</p>
-                            <p><strong>Total ${tournamentType === 'solo' ? 'Players' : 'Teams'}:</strong> 
-                               ${tournamentType === 'solo' ? data.participants.length : data.teams.length}</p>
-                            ${tournamentType !== 'solo' ? `<p><strong>Total Players:</strong> ${data.totalPlayers}</p>` : ''}
-                        </div>
-                        <div class="participants-list">
-                            ${participantsHTML}
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button class="btn btn-secondary" onclick="closeParticipantsModal()">Close</button>
-                    </div>
-                </div>
-            </div>
-        `;
+        return 
+            '<div class="modal-overlay" onclick="closeParticipantsModal()">' +
+                '<div class="modal-content participants-modal-content" onclick="event.stopPropagation()">' +
+                    '<div class="modal-header">' +
+                        '<h3>Participants: ' + escapeHtml(tournament.name) + '</h3>' +
+                        '<span class="tournament-mode-badge">' + tournamentType.toUpperCase() + '</span>' +
+                        '<button class="modal-close" onclick="closeParticipantsModal()" type="button" style="cursor: pointer; background: none; border: none; font-size: 24px; color: #666; float: right;">&times;</button>' +
+                    '</div>' +
+                    '<div class="modal-body">' +
+                        '<div class="participants-summary">' +
+                            '<p><strong>Tournament Mode:</strong> ' + tournamentType + '</p>' +
+                            '<p><strong>Total ' + (tournamentType === 'solo' ? 'Players' : 'Teams') + ':</strong> ' +
+                               (tournamentType === 'solo' ? (data.participants ? data.participants.length : 0) : (data.teams ? data.teams.length : 0)) + '</p>' +
+                            (tournamentType !== 'solo' ? '<p><strong>Total Players:</strong> ' + (data.totalPlayers || 0) + '</p>' : '') +
+                        '</div>' +
+                        '<div class="participants-list">' +
+                            participantsHTML +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="modal-footer">' +
+                        '<button class="btn btn-secondary" onclick="closeParticipantsModal()" type="button">Close</button>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
     }
     
     // Close modal function
     function closeParticipantsModal() {
         const modal = document.querySelector('.participants-modal');
         if (modal) {
-            modal.remove();
+            // Add fade out animation
+            modal.style.opacity = '0';
+            setTimeout(function() {
+                modal.remove();
+            }, 300);
         }
     }
     
     // Utility function
     function escapeHtml(text) {
         if (!text) return '';
+        if (typeof text !== 'string') return String(text);
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
     }
+    
 
     // USER MANAGEMENT FUNCTIONS
     async function loadUsers() {
@@ -2933,9 +3032,6 @@ window.initializeEntryFeeToggle = initializeEntryFeeToggle;
 window.enhancedCreateTournamentFormHandler = enhancedCreateTournamentFormHandler;
 window.validateTournamentForm = validateTournamentForm;
 window.createTournamentWithAPI = createTournamentWithAPI;
-
-// QUICK FIX FOR YOUR ISSUES
-// Place this code at the VERY END of your admin.js file
 
 // 1. RESET ALL TOURNAMENT CREATION HANDLERS
 document.addEventListener('DOMContentLoaded', function () {
