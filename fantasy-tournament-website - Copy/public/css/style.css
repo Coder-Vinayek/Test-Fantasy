@@ -4994,3 +4994,35 @@ input[name="teamName"] {
     color: #0c5460;
     border: 1px solid #bee5eb;
 }
+
+/* ============================================================================ */
+/* UTILITY CLASSES */
+/* ============================================================================ */
+
+.text-success {
+    color: #28a745 !important;
+}
+
+.text-danger {
+    color: #dc3545 !important;
+}
+
+.text-warning {
+    color: #ffc107 !important;
+}
+
+.text-info {
+    color: #17a2b8 !important;
+}
+
+.bg-light {
+    background-color: #f8f9fa !important;
+}
+
+.border-success {
+    border-color: #28a745 !important;
+}
+
+.border-primary {
+    border-color: #007bff !important;
+}
