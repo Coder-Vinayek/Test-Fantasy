@@ -229,8 +229,6 @@ document.addEventListener('DOMContentLoaded', function () {
     // ANALYTICS FUNCTIONS 
     async function loadAnalytics() {
         try {
-            console.log('📊 Loading analytics...');
-
             const response = await adminFetch('/api/admin/analytics');
             if (!response) {
                 console.error('❌ No response from analytics API');
@@ -322,8 +320,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 console.error('⚠️ Error displaying tournament status:', error);
                 displayTournamentStatusError();
             }
-
-            console.log('✅ Analytics loaded successfully');
 
         } catch (error) {
             console.error('❌ Error loading analytics:', error);
@@ -465,7 +461,6 @@ document.addEventListener('DOMContentLoaded', function () {
     // ====================================
     async function loadPayouts() {
         try {
-            console.log('Loading payout requests...');
             const response = await adminFetch('/api/admin/payout-requests');
             if (!response) return;
 
@@ -1582,7 +1577,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Tournament Management Functions
     function loadManageTournaments() {
-        console.log('Loading tournament management...');
         loadTournamentsForManagement();
         initializeTournamentManagementEvents();
     }
@@ -3070,8 +3064,6 @@ function validateTournamentForm() {
 document.addEventListener('DOMContentLoaded', function () {
     // Wait for page to fully load
     setTimeout(() => {
-        console.log('🔧 Initializing enhanced tournament creation...');
-
         // Initialize the toggle functionality
         initializeEntryFeeToggle();
 
@@ -3091,9 +3083,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 // If validation passes, handle enhanced creation
                 enhancedCreateTournamentFormHandler(e);
-            });
-
-            console.log('✅ Enhanced tournament creation form handler initialized');
+            });         
         } else {
             console.warn('⚠️ createTournamentForm not found');
         }
@@ -3111,8 +3101,6 @@ window.createTournamentWithAPI = createTournamentWithAPI;
 document.addEventListener('DOMContentLoaded', function () {
     // Wait a bit for page to load
     setTimeout(() => {
-        console.log('🔧 Applying quick fixes...');
-
         // Reset the creation flag
         window.isCreatingTournament = false;
 
@@ -3238,8 +3226,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     resetCreationState(submitBtn, originalText);
                 });
         });
-
-        console.log('✅ Quick fix applied successfully');
 
     }, 2000); // Wait 2 seconds for everything to load
 });
