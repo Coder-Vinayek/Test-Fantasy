@@ -831,11 +831,11 @@ document.addEventListener('DOMContentLoaded', function () {
     
         // Get tournament info first
         fetch('/api/admin/tournaments')
-            .then(function(response) { 
+            .then(function(response) {
                 if (!response.ok) {
                     throw new Error('Failed to fetch tournaments');
                 }
-                return response.json(); 
+                return response.json();
             })
             .then(function(tournaments) {
                 const tournament = tournaments.find(function(t) { return t.id == tournamentId; });
@@ -864,28 +864,9 @@ document.addEventListener('DOMContentLoaded', function () {
                             return;
                         }
     
-                        // FIXED: Debug the structure with proper null checks
-                        console.log('🔍 FIXED: Data structure check:');
-                        console.log('- Tournament:', data.tournament);
-                        console.log('- Participants array:', data.participants);
-                        console.log('- Teams array:', data.teams);
-                        console.log('- Total players:', data.totalPlayers);
-    
                         // FIXED: Ensure teams is an array
                         const teams = Array.isArray(data.teams) ? data.teams : [];
                         const participants = Array.isArray(data.participants) ? data.participants : [];
-    
-                        if (teams.length > 0) {
-                            console.log('👥 FIXED: Teams details:');
-                            teams.forEach(function(team, index) {
-                                console.log('  Team ' + index + ':', {
-                                    id: team.team_id,
-                                    name: team.team_name,
-                                    playerCount: team.players ? team.players.length : 0,
-                                    players: team.players
-                                });
-                            });
-                        }
     
                         // FIXED: Use REAL team data from database instead of mock teams
                         const modalData = {
@@ -897,9 +878,10 @@ document.addEventListener('DOMContentLoaded', function () {
     
                         console.log('🎯 FIXED: Final modal data:', modalData);
     
-                        // Create and show modal
+                        // Create and show modal with FIXED close functionality
                         const modal = document.createElement('div');
                         modal.className = 'participants-modal';
+                        modal.id = 'participantsModal';
     
                         try {
                             modal.innerHTML = createParticipantsModalHTML(modalData);
@@ -913,7 +895,51 @@ document.addEventListener('DOMContentLoaded', function () {
                         document.body.appendChild(modal);
                         modal.style.display = 'block';
     
-                        console.log('✅ FIXED: Modal displayed successfully');
+                        // FIXED: Add proper event listeners after modal is in DOM
+                        setTimeout(function() {
+                            // Close button (×) in header
+                            const closeBtn = modal.querySelector('.modal-close');
+                            if (closeBtn) {
+                                closeBtn.addEventListener('click', function(e) {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    closeParticipantsModal();
+                                });
+                            }
+    
+                            // Close button in footer
+                            const closeFooterBtn = modal.querySelector('.btn-secondary');
+                            if (closeFooterBtn) {
+                                closeFooterBtn.addEventListener('click', function(e) {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    closeParticipantsModal();
+                                });
+                            }
+    
+                            // Close on overlay click
+                            const overlay = modal.querySelector('.modal-overlay');
+                            if (overlay) {
+                                overlay.addEventListener('click', function(e) {
+                                    if (e.target === overlay) {
+                                        closeParticipantsModal();
+                                    }
+                                });
+                            }
+    
+                            // Close on ESC key
+                            const escapeHandler = function(e) {
+                                if (e.key === 'Escape') {
+                                    closeParticipantsModal();
+                                    document.removeEventListener('keydown', escapeHandler);
+                                }
+                            };
+                            document.addEventListener('keydown', escapeHandler);
+    
+                            console.log('✅ FIXED: All close event listeners added');
+                        }, 100);
+    
+                        console.log('✅ FIXED: Modal displayed successfully with working close buttons');
                     })
                     .catch(function(error) {
                         console.error('❌ FIXED: API error:', error);
@@ -961,24 +987,26 @@ document.addEventListener('DOMContentLoaded', function () {
                                 '<th>Registration Date</th>' +
                             '</tr>' +
                         '</thead>' +
-                        '<tbody>' +
-                            participants.map(function(participant) {
-                                const walletBalance = participant.wallet_balance || 0;
-                                const winningsBalance = participant.winnings_balance || 0;
-                                const regDate = participant.registration_date || participant.created_at || '';
-                                const formattedDate = regDate ? new Date(regDate).toLocaleDateString() : 'Unknown';
-                                
-                                return '<tr>' +
-                                    '<td>' + (participant.id || 'N/A') + '</td>' +
-                                    '<td>' + escapeHtml(participant.username || 'Unknown') + '</td>' +
-                                    '<td>' + escapeHtml(participant.email || 'Unknown') + '</td>' +
-                                    '<td>₹' + parseFloat(walletBalance).toFixed(2) + '</td>' +
-                                    '<td>₹' + parseFloat(winningsBalance).toFixed(2) + '</td>' +
-                                    '<td>' + formattedDate + '</td>' +
-                                '</tr>';
-                            }).join('') +
-                        '</tbody>' +
-                    '</table>';
+                        '<tbody>';
+    
+                // FIXED: Use forEach for Node.js 12.22 compatibility
+                participants.forEach(function(participant) {
+                    const walletBalance = participant.wallet_balance || 0;
+                    const winningsBalance = participant.winnings_balance || 0;
+                    const regDate = participant.registration_date || participant.created_at || '';
+                    const formattedDate = regDate ? new Date(regDate).toLocaleDateString() : 'Unknown';
+    
+                    participantsHTML += '<tr>' +
+                        '<td>' + (participant.id || 'N/A') + '</td>' +
+                        '<td>' + escapeHtml(participant.username || 'Unknown') + '</td>' +
+                        '<td>' + escapeHtml(participant.email || 'Unknown') + '</td>' +
+                        '<td>₹' + parseFloat(walletBalance).toFixed(2) + '</td>' +
+                        '<td>₹' + parseFloat(winningsBalance).toFixed(2) + '</td>' +
+                        '<td>' + formattedDate + '</td>' +
+                    '</tr>';
+                });
+    
+                participantsHTML += '</tbody></table>';
             }
         } else {
             // Show REAL teams with REAL team names from database
@@ -1015,7 +1043,7 @@ document.addEventListener('DOMContentLoaded', function () {
             teams.forEach(function(team) {
                 const teamName = team.team_name || ('Team ' + team.team_id);
                 const players = Array.isArray(team.players) ? team.players : [];
-                
+    
                 console.log('FIXED: Processing team:', teamName, 'with', players.length, 'players');
     
                 // Team header row
@@ -1058,57 +1086,86 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             });
     
-            participantsHTML +=
-                    '</tbody>' +
-                '</table>';
+            participantsHTML += '</tbody></table>';
         }
     
-        // FIXED: Safe tournament name handling
+        // FIXED: Safe tournament name handling - this is likely where "undefined" was coming from
         const tournamentName = tournament.name || 'Unknown Tournament';
-        const totalCount = tournamentType === 'solo' 
-            ? participants.length 
+        const totalCount = tournamentType === 'solo'
+            ? participants.length
             : teams.length;
         const totalPlayersCount = data.totalPlayers || participants.length;
     
-        return
-            '<div class="modal-overlay" onclick="closeParticipantsModal()">' +
-                '<div class="modal-content participants-modal-content" onclick="event.stopPropagation()">' +
-                    '<div class="modal-header">' +
-                        '<h3>Participants: ' + escapeHtml(tournamentName) + '</h3>' +
-                        '<span class="tournament-mode-badge">' + tournamentType.toUpperCase() + '</span>' +
-                        '<button class="modal-close" onclick="closeParticipantsModal()" type="button" style="cursor: pointer; background: none; border: none; font-size: 24px; color: #666; float: right;">&times;</button>' +
+        // FIXED: Return proper HTML string instead of undefined
+        return '<div class="modal-overlay" onclick="closeParticipantsModal()">' +
+            '<div class="modal-content participants-modal-content" onclick="event.stopPropagation()">' +
+                '<div class="modal-header">' +
+                    '<h3>Participants: ' + escapeHtml(tournamentName) + '</h3>' +
+                    '<span class="tournament-mode-badge">' + tournamentType.toUpperCase() + '</span>' +
+                    '<button class="modal-close" onclick="closeParticipantsModal()" type="button" style="cursor: pointer; background: none; border: none; font-size: 24px; color: #666; float: right;">&times;</button>' +
+                '</div>' +
+                '<div class="modal-body">' +
+                    '<div class="participants-summary">' +
+                        '<p><strong>Tournament Mode:</strong> ' + tournamentType + '</p>' +
+                        '<p><strong>Total ' + (tournamentType === 'solo' ? 'Players' : 'Teams') + ':</strong> ' + totalCount + '</p>' +
+                        (tournamentType !== 'solo' ? '<p><strong>Total Players:</strong> ' + totalPlayersCount + '</p>' : '') +
                     '</div>' +
-                    '<div class="modal-body">' +
-                        '<div class="participants-summary">' +
-                            '<p><strong>Tournament Mode:</strong> ' + tournamentType + '</p>' +
-                            '<p><strong>Total ' + (tournamentType === 'solo' ? 'Players' : 'Teams') + ':</strong> ' + totalCount + '</p>' +
-                            (tournamentType !== 'solo' ? '<p><strong>Total Players:</strong> ' + totalPlayersCount + '</p>' : '') +
-                        '</div>' +
-                        '<div class="participants-list">' +
-                            participantsHTML +
-                        '</div>' +
-                    '</div>' +
-                    '<div class="modal-footer">' +
-                        '<button class="btn btn-secondary" onclick="closeParticipantsModal()" type="button">Close</button>' +
+                    '<div class="participants-list">' +
+                        participantsHTML +
                     '</div>' +
                 '</div>' +
-            '</div>';
+                '<div class="modal-footer">' +
+                    '<button class="btn btn-secondary" onclick="closeParticipantsModal()" type="button">Close</button>' +
+                '</div>' +
+            '</div>' +
+        '</div>';
     }
     
     
     // Close modal function
     function closeParticipantsModal() {
-        const modal = document.querySelector('.participants-modal');
-        if (modal) {
-            // Add fade out animation
-            modal.style.opacity = '0';
-            setTimeout(function() {
-                try {
-                    modal.remove();
-                } catch (error) {
-                    console.warn('Modal was already removed');
+        console.log('🔒 Closing participants modal...');
+        
+        // Find all possible modal selectors
+        const modalSelectors = [
+            '.participants-modal',
+            '#participantsModal', 
+            '.modal-overlay',
+            '[class*="participants-modal"]'
+        ];
+        
+        let modalFound = false;
+        
+        modalSelectors.forEach(function(selector) {
+            const modals = document.querySelectorAll(selector);
+            modals.forEach(function(modal) {
+                if (modal) {
+                    modalFound = true;
+                    try {
+                        // Add fade out effect
+                        modal.style.opacity = '0';
+                        modal.style.transition = 'opacity 0.3s ease';
+                        
+                        // Remove after animation
+                        setTimeout(function() {
+                            if (modal && modal.parentNode) {
+                                modal.parentNode.removeChild(modal);
+                                console.log('✅ Modal removed successfully');
+                            }
+                        }, 300);
+                    } catch (error) {
+                        console.warn('Error with fade animation, force removing:', error);
+                        // Force remove if there's an error
+                        if (modal && modal.parentNode) {
+                            modal.parentNode.removeChild(modal);
+                        }
+                    }
                 }
-            }, 300);
+            });
+        });
+        
+        if (!modalFound) {
+            console.warn('⚠️ No modal found to close');
         }
     }
     
@@ -1120,7 +1177,6 @@ document.addEventListener('DOMContentLoaded', function () {
         div.textContent = text;
         return div.innerHTML;
     }
-    
 
     // USER MANAGEMENT FUNCTIONS
     async function loadUsers() {
@@ -3194,4 +3250,3 @@ function resetCreationState(submitBtn, originalText) {
     submitBtn.disabled = false;
     submitBtn.innerHTML = originalText;
 }
-
