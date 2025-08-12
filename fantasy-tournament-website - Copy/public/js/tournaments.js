@@ -1,9 +1,3 @@
-/**
- * Enhanced Tournament System with Duo/Squad Registration Support
- * Compatible with Node.js 12.22
- * Replace your existing tournaments.js file with this enhanced version
- */
-
 // Global state management
 let state = {
     allTournaments: [],
@@ -42,7 +36,6 @@ const defaultGameData = {
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Enhanced Tournament system initializing...');
     initializeSystem();
 });
 
@@ -65,8 +58,6 @@ async function initializeSystem() {
         
         // Setup filters AFTER tournaments are loaded
         setupFilters();
-        
-        console.log('Enhanced Tournament system initialized successfully');
         
     } catch (error) {
         console.error('Failed to initialize tournament system:', error);
@@ -135,7 +126,6 @@ async function loadTournaments() {
     try {
         showLoading();
         state.isLoading = true;
-        console.log('Loading tournaments from enhanced API...');
         
         const response = await fetch('/api/tournaments/enhanced');
         if (!response.ok) {
