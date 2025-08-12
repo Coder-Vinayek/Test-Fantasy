@@ -53,7 +53,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const pathParts = window.location.pathname.split('/');
     const tournamentId = pathParts[pathParts.length - 1];
 
-    console.log('🔍 Tournament lobby page loaded');
     console.log('🆔 Tournament ID extracted:', tournamentId);
 
     if (!tournamentId || tournamentId === 'tournament') {
@@ -144,7 +143,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Functions
     async function loadUserInfo() {
-        console.log('📊 Loading user info...');
         try {
             const response = await fetch('/api/user');
             const user = await response.json();
@@ -215,7 +213,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     async function loadChatMessages() {
-        console.log('💬 Loading chat messages...');
         try {
             const response = await fetch(`/api/tournament/${tournamentId}/chat`);
             const messages = await response.json();
@@ -429,7 +426,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.loadPlayers = loadPlayers;
     async function loadPlayers() {
-        console.log('👥 Loading players with REAL team data...');
         try {
             const tournamentId = window.location.pathname.split('/').pop();
             
@@ -570,7 +566,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     async function loadAnnouncements() {
-        console.log('📢 Loading announcements...');
         try {
             const response = await fetch(`/api/tournament/${tournamentId}/announcements`);
             const announcements = await response.json();
