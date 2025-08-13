@@ -72,6 +72,8 @@ document.addEventListener('DOMContentLoaded', function () {
     loadAnalytics();
     initializeBanModal();
     checkAdminSession();
+    setupMaintenancePanel();
+    loadWalletMaintenanceStatus();
 
     // Auto-refresh session every 5 minutes
     setInterval(checkAdminSession, 5 * 60 * 1000);
@@ -3235,4 +3237,205 @@ function resetCreationState(submitBtn, originalText) {
     window.isCreatingTournament = false;
     submitBtn.disabled = false;
     submitBtn.innerHTML = originalText;
+}
+
+// ========================================
+// Admin Panel Integration for Wallet Maintenance Mode
+// ========================================
+
+// Load wallet maintenance status in admin panel
+async function loadWalletMaintenanceStatus() {
+    try {
+        const response = await fetch('/api/wallet/maintenance-status');
+        const result = await response.json();
+        
+        if (result.success && result.status) {
+            updateMaintenanceUI(result.status);
+        }
+    } catch (error) {
+        console.error('Failed to load maintenance status:', error);
+        showMessage('Failed to load wallet maintenance status', 'error');
+    }
+}
+
+// Update maintenance UI elements
+function updateMaintenanceUI(status) {
+    // Update main toggle
+    const maintenanceToggle = document.getElementById('maintenanceToggle');
+    if (maintenanceToggle) {
+        maintenanceToggle.checked = status.maintenance_mode;
+    }
+    
+    // Update operation toggles
+    const depositToggle = document.getElementById('depositToggle');
+    if (depositToggle) {
+        depositToggle.checked = status.deposit_disabled;
+        depositToggle.disabled = status.maintenance_mode; // Disable if full maintenance mode
+    }
+    
+    const withdrawalToggle = document.getElementById('withdrawalToggle');
+    if (withdrawalToggle) {
+        withdrawalToggle.checked = status.withdrawal_disabled;
+        withdrawalToggle.disabled = status.maintenance_mode; // Disable if full maintenance mode
+    }
+    
+    // Update status display
+    const statusDisplay = document.getElementById('maintenanceStatusDisplay');
+    if (statusDisplay) {
+        let statusText = '';
+        let statusClass = '';
+        
+        if (status.maintenance_mode) {
+            statusText = '🔧 Full Maintenance Mode Active';
+            statusClass = 'status-maintenance';
+        } else if (status.deposit_disabled || status.withdrawal_disabled) {
+            statusText = '⚠️ Partial Maintenance Active';
+            statusClass = 'status-partial';
+        } else {
+            statusText = '✅ All Systems Operational';
+            statusClass = 'status-operational';
+        }
+        
+        statusDisplay.textContent = statusText;
+        statusDisplay.className = 'maintenance-status ' + statusClass;
+    }
+    
+    // Update last updated info
+    const lastUpdated = document.getElementById('maintenanceLastUpdated');
+    if (lastUpdated && status.last_updated) {
+        const date = new Date(status.last_updated);
+        lastUpdated.textContent = `Last updated: ${date.toLocaleString()} by ${status.updated_by || 'Unknown'}`;
+    }
+}
+
+// Toggle full maintenance mode
+async function toggleMaintenanceMode(enabled) {
+    try {
+        const endpoint = enabled ? '/api/admin/wallet/enable-maintenance' : '/api/admin/wallet/disable-maintenance';
+        const message = enabled ? getMaintenanceMessage() : '';
+        
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ message })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showMessage(result.message, 'success');
+            await loadWalletMaintenanceStatus(); // Refresh status
+        } else {
+            showMessage(result.error || 'Operation failed', 'error');
+            // Revert toggle
+            const toggle = document.getElementById('maintenanceToggle');
+            if (toggle) toggle.checked = !enabled;
+        }
+    } catch (error) {
+        console.error('Toggle maintenance error:', error);
+        showMessage('Failed to toggle maintenance mode', 'error');
+        // Revert toggle
+        const toggle = document.getElementById('maintenanceToggle');
+        if (toggle) toggle.checked = !enabled;
+    }
+}
+
+// Toggle specific operation
+async function toggleOperation(operation, disabled) {
+    try {
+        const message = disabled ? getOperationMessage(operation) : '';
+        
+        const response = await fetch('/api/admin/wallet/toggle-operation', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                operation,
+                disabled,
+                message
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showMessage(result.message, 'success');
+            await loadWalletMaintenanceStatus(); // Refresh status
+        } else {
+            showMessage(result.error || 'Operation failed', 'error');
+            // Revert toggle
+            const toggle = document.getElementById(operation + 'Toggle');
+            if (toggle) toggle.checked = !disabled;
+        }
+    } catch (error) {
+        console.error('Toggle operation error:', error);
+        showMessage(`Failed to toggle ${operation}`, 'error');
+        // Revert toggle
+        const toggle = document.getElementById(operation + 'Toggle');
+        if (toggle) toggle.checked = !disabled;
+    }
+}
+
+// Get maintenance message from input
+function getMaintenanceMessage() {
+    const messageInput = document.getElementById('maintenanceMessage');
+    return messageInput ? messageInput.value.trim() : 'Wallet services are temporarily unavailable for maintenance. Please try again later.';
+}
+
+// Get operation-specific message
+function getOperationMessage(operation) {
+    const messageInput = document.getElementById(operation + 'Message');
+    const defaultMessages = {
+        deposit: 'Deposit services are temporarily disabled for maintenance.',
+        withdrawal: 'Withdrawal services are temporarily disabled for maintenance.'
+    };
+    
+    return messageInput ? messageInput.value.trim() : defaultMessages[operation];
+}
+
+// Setup maintenance panel event listeners
+function setupMaintenancePanel() {
+    // Main maintenance toggle
+    const maintenanceToggle = document.getElementById('maintenanceToggle');
+    if (maintenanceToggle) {
+        maintenanceToggle.addEventListener('change', function() {
+            const confirmMessage = this.checked 
+                ? 'Are you sure you want to enable wallet maintenance mode? This will disable all wallet operations for users.'
+                : 'Are you sure you want to disable wallet maintenance mode? This will restore all wallet operations.';
+            
+            if (confirm(confirmMessage)) {
+                toggleMaintenanceMode(this.checked);
+            } else {
+                this.checked = !this.checked; // Revert
+            }
+        });
+    }
+    
+    // Deposit toggle
+    const depositToggle = document.getElementById('depositToggle');
+    if (depositToggle) {
+        depositToggle.addEventListener('change', function() {
+            toggleOperation('deposit', this.checked);
+        });
+    }
+    
+    // Withdrawal toggle
+    const withdrawalToggle = document.getElementById('withdrawalToggle');
+    if (withdrawalToggle) {
+        withdrawalToggle.addEventListener('change', function() {
+            toggleOperation('withdrawal', this.checked);
+        });
+    }
+    
+    // Refresh status button
+    const refreshBtn = document.getElementById('refreshMaintenanceStatus');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', loadWalletMaintenanceStatus);
+    }
+    
+    // Auto-refresh every 30 seconds
+    setInterval(loadWalletMaintenanceStatus, 30000);
 }
