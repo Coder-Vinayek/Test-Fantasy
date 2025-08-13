@@ -5406,3 +5406,310 @@ input[name="teamName"] {
 .border-primary {
     border-color: #007bff !important;
 }
+
+/* MAINTENANCE CSS */
+/* Maintenance Mode Styles */
+.maintenance-banner {
+    background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+    color: white;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 20px 0;
+    box-shadow: 0 4px 15px rgba(238, 90, 36, 0.3);
+    animation: fadeInDown 0.5s ease-out;
+}
+
+.maintenance-banner.maintenance-deposit {
+    background: linear-gradient(135deg, #ffa726, #ff9800);
+}
+
+.maintenance-banner.maintenance-withdrawal {
+    background: linear-gradient(135deg, #ef5350, #f44336);
+}
+
+.maintenance-content {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.maintenance-icon {
+    font-size: 24px;
+    animation: rotate 2s linear infinite;
+}
+
+.maintenance-text h4 {
+    margin: 0 0 5px 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.maintenance-text p {
+    margin: 0;
+    font-size: 14px;
+    opacity: 0.9;
+    line-height: 1.4;
+}
+
+.action-card.maintenance-disabled {
+    opacity: 0.6;
+    pointer-events: none;
+    position: relative;
+}
+
+.action-card.maintenance-disabled::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 8px;
+    z-index: 1;
+}
+
+.btn-disabled {
+    background: #cccccc !important;
+    color: #666666 !important;
+    cursor: not-allowed !important;
+    opacity: 0.6;
+}
+
+.quick-amount-btn.disabled {
+    background: #e0e0e0 !important;
+    color: #999999 !important;
+    cursor: not-allowed !important;
+    opacity: 0.5;
+}
+
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes rotate {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Mobile responsiveness for maintenance banners */
+@media (max-width: 768px) {
+    .maintenance-content {
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
+    }
+    
+    .maintenance-text h4 {
+        font-size: 16px;
+    }
+    
+    .maintenance-text p {
+        font-size: 13px;
+    }
+}
+
+/* ADMIN MAINTENANCE CSS */
+/* Wallet Maintenance Admin Styles */
+.maintenance-status-card {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.status-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.maintenance-status {
+    font-size: 18px;
+    font-weight: 600;
+    padding: 10px 15px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+}
+
+.status-operational {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.status-partial {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.status-maintenance {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.last-updated {
+    font-size: 12px;
+    color: #6c757d;
+    font-style: italic;
+}
+
+.maintenance-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.control-group {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.control-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.control-header h4 {
+    margin: 0;
+    color: #495057;
+}
+
+.control-description {
+    color: #6c757d;
+    font-size: 14px;
+    margin-bottom: 15px;
+    line-height: 1.4;
+}
+
+.control-input {
+    margin-top: 15px;
+}
+
+.control-input label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: #495057;
+}
+
+.control-input textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 14px;
+    resize: vertical;
+}
+
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 34px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: 0.4s;
+    border-radius: 34px;
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 26px;
+    width: 26px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: 0.4s;
+    border-radius: 50%;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+    background-color: #ff4757;
+}
+
+.toggle-switch input:checked + .toggle-slider:before {
+    transform: translateX(26px);
+}
+
+.toggle-switch input:disabled + .toggle-slider {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.maintenance-info {
+    background: #e9ecef;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.maintenance-info h4 {
+    margin: 0 0 15px 0;
+    color: #495057;
+}
+
+.maintenance-info ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.maintenance-info li {
+    margin-bottom: 8px;
+    color: #6c757d;
+    line-height: 1.4;
+}
+
+.maintenance-info strong {
+    color: #495057;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .control-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .status-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+}
