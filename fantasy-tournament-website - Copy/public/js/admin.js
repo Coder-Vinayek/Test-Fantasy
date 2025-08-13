@@ -371,8 +371,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         <strong>${formattedDate}</strong>
                     </div>
                     <div>
-                        <span class="credit-amount">+$${creditAmount} winnings awarded</span>
-                        ${parseFloat(debitAmount) > 0 ? `| <span class="debit-amount">-$${debitAmount} deductions</span>` : ''}
+                        <span class="credit-amount">+₹${creditAmount} winnings awarded</span>
+                        ${parseFloat(debitAmount) > 0 ? `| <span class="debit-amount">-₹${debitAmount} deductions</span>` : ''}
                     </div>
                 `;
                 container.appendChild(item);
@@ -1304,7 +1304,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const highlightText = (text, term) => {
             if (!term) return text;
             const regex = new RegExp(`(${term})`, 'gi');
-            return text.replace(regex, '<span class="search-highlight">$1</span>');
+            return text.replace(regex, '<span class="search-highlight">₹1</span>');
         };
 
         // Add ban status styling to row
@@ -1321,8 +1321,8 @@ document.addEventListener('DOMContentLoaded', function () {
             <td>${highlightText(user.id.toString(), searchTerm)}</td>
             <td>${highlightText(user.username, searchTerm)}</td>
             <td>${highlightText(user.email, searchTerm)}</td>
-            <td>$${user.wallet_balance.toFixed(2)}</td>
-            <td>$${user.winnings_balance.toFixed(2)}</td>
+            <td>₹${user.wallet_balance.toFixed(2)}</td>
+            <td>₹${user.winnings_balance.toFixed(2)}</td>
             <td>${createdDate}</td>
             <td class="ban-status-cell">${banStatusHTML}</td>
             <td class="user-actions-cell">
@@ -1568,7 +1568,7 @@ document.addEventListener('DOMContentLoaded', function () {
             <td>${transaction.id}</td>
             <td>${transaction.username}</td>
             <td class="${typeClass}">${transaction.transaction_type.toUpperCase()}</td>
-            <td class="${typeClass}">${amountPrefix}$${transaction.amount.toFixed(2)}</td>
+            <td class="${typeClass}">${amountPrefix}₹${transaction.amount.toFixed(2)}</td>
             <td>${transaction.balance_type.toUpperCase()}</td>
             <td>${transaction.description}</td>
             <td>${date}</td>
@@ -1709,7 +1709,7 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('manageTournamentStatus').textContent = data.tournament.status;
             document.getElementById('manageTournamentParticipants').textContent =
                 `${data.tournament.current_participants}/${data.tournament.max_participants}`;
-            document.getElementById('manageTournamentPrize').textContent = `$${data.tournament.prize_pool}`;
+            document.getElementById('manageTournamentPrize').textContent = `₹${data.tournament.prize_pool}`;
 
             // Load match details if they exist
             if (data.matchDetails) {
@@ -2180,7 +2180,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (response.ok && result.success) {
                     const message = entryFee === 0 ?
                         '🎉 FREE tournament created successfully!' :
-                        `💰 PAID tournament created successfully! Entry fee: $${entryFee}`;
+                        `💰 PAID tournament created successfully! Entry fee: ₹${entryFee}`;
 
                     showMessage(result.message || message, 'success');
                     newForm.reset();
@@ -2913,7 +2913,7 @@ function enhancedCreateTournamentFormHandler(e) {
 
         if (tournamentType === 'free') {
             entryFee = 0; // Explicitly set to 0
-            console.log('🎉 Creating FREE tournament (entry fee: $0)');
+            console.log('🎉 Creating FREE tournament (entry fee: ₹0)');
         } else {
             const entryFeeValue = formData.get('entry_fee');
 
@@ -2923,13 +2923,13 @@ function enhancedCreateTournamentFormHandler(e) {
 
                 // Check if parsing resulted in NaN
                 if (isNaN(entryFee) || entryFee <= 0) {
-                    throw new Error('Please enter a valid entry fee amount for paid tournaments (minimum $0.01)');
+                    throw new Error('Please enter a valid entry fee amount for paid tournaments (minimum ₹0.01)');
                 }
             } else {
                 throw new Error('Entry fee is required for paid tournaments');
             }
 
-            console.log('💰 Creating PAID tournament (entry fee: $' + entryFee + ')');
+            console.log('💰 Creating PAID tournament (entry fee: ₹' + entryFee + ')');
         }
 
         // FIXED: Ensure all numeric values are properly parsed
@@ -3004,7 +3004,7 @@ async function createTournamentWithAPI(tournamentData, submitBtn, originalText, 
         if (response.ok && result.success) {
             const tournamentTypeMessage = tournamentData.entry_fee === 0 ?
                 '🎉 FREE tournament created successfully!' :
-                `💰 PAID tournament created successfully! Entry fee: $${tournamentData.entry_fee}`;
+                `💰 PAID tournament created successfully! Entry fee: ₹${tournamentData.entry_fee}`;
 
             showMessage(result.message || tournamentTypeMessage, 'success');
 
