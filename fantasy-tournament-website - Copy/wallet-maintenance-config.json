@@ -1,0 +1,10 @@
+{
+  "maintenance_mode": true,
+  "maintenance_message": "Wallet services are temporarily unavailable for maintenance. Please try again later.",
+  "deposit_disabled": false,
+  "withdrawal_disabled": false,
+  "last_updated": "2025-08-13T14:06:01.283Z",
+  "updated_by": "admin",
+  "deposit_message": "Deposit Services are Temporarily Unavailable, Please Try Again Later.",
+  "withdrawal_message": "Wallet Services are Temporarily Unavailable, Please Try Again Later."
+}
