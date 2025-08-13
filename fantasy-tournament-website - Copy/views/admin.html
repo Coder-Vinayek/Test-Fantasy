@@ -579,6 +579,92 @@
             <!-- Hidden input for payout ID -->
             <input type="hidden" id="payoutId" />
 
+            <!-- Add this section to your admin.html file -->
+<div class="admin-section">
+    <h3>🔧 Wallet Maintenance Control</h3>
+    
+    <div class="maintenance-status-card">
+        <div class="status-header">
+            <h4>Current Status</h4>
+            <button id="refreshMaintenanceStatus" class="btn btn-small">🔄 Refresh</button>
+        </div>
+        
+        <div id="maintenanceStatusDisplay" class="maintenance-status status-operational">
+            ✅ All Systems Operational
+        </div>
+        
+        <div id="maintenanceLastUpdated" class="last-updated">
+            <!-- Last updated info will appear here -->
+        </div>
+    </div>
+    
+    <div class="maintenance-controls">
+        <!-- Full Maintenance Mode -->
+        <div class="control-group">
+            <div class="control-header">
+                <h4>🚫 Full Maintenance Mode</h4>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="maintenanceToggle">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <p class="control-description">
+                Disables all wallet operations (deposits and withdrawals). Use during major updates or system maintenance.
+            </p>
+            <div class="control-input">
+                <label for="maintenanceMessage">Maintenance Message:</label>
+                <textarea id="maintenanceMessage" rows="2" placeholder="Wallet services are temporarily unavailable for maintenance. Please try again later."></textarea>
+            </div>
+        </div>
+        
+        <!-- Individual Operation Controls -->
+        <div class="control-group">
+            <div class="control-header">
+                <h4>💰 Deposit Operations</h4>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="depositToggle">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <p class="control-description">
+                Disable only deposit operations. Withdrawals will remain available.
+            </p>
+            <div class="control-input">
+                <label for="depositMessage">Deposit Message:</label>
+                <textarea id="depositMessage" rows="2" placeholder="Deposit services are temporarily disabled for maintenance."></textarea>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <div class="control-header">
+                <h4>💸 Withdrawal Operations</h4>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="withdrawalToggle">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <p class="control-description">
+                Disable only withdrawal operations. Deposits will remain available.
+            </p>
+            <div class="control-input">
+                <label for="withdrawalMessage">Withdrawal Message:</label>
+                <textarea id="withdrawalMessage" rows="2" placeholder="Withdrawal services are temporarily disabled for maintenance."></textarea>
+            </div>
+        </div>
+    </div>
+    
+    <div class="maintenance-info">
+        <h4>ℹ️ How It Works:</h4>
+        <ul>
+            <li><strong>Full Maintenance:</strong> Disables all wallet operations and shows maintenance banner</li>
+            <li><strong>Partial Maintenance:</strong> Disable specific operations (deposit or withdrawal only)</li>
+            <li><strong>User Experience:</strong> Users see maintenance messages and disabled forms</li>
+            <li><strong>Auto-refresh:</strong> Status updates automatically every 30 seconds</li>
+            <li><strong>Persistent:</strong> Settings are saved and persist across server restarts</li>
+        </ul>
+    </div>
+</div>
+
             <div id="message" class="message"></div>
         </main>
 
