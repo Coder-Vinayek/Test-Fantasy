@@ -22,6 +22,11 @@ document.addEventListener('DOMContentLoaded', function () {
     loadUserInfo();
     loadTransactions();
     setupTransactionToggle();
+    checkWalletMaintenanceStatus();
+    enhanceFormHandlersWithMaintenance();
+    
+    // Check maintenance status every 30 seconds
+    setInterval(checkWalletMaintenanceStatus, 30000);
 
     // ENHANCED: Setup transaction history toggle
     function setupTransactionToggle() {
@@ -428,3 +433,249 @@ document.addEventListener('DOMContentLoaded', function () {
     // Auto-refresh user info every 30 seconds to keep balances updated
     setInterval(loadUserInfo, 30000);
 });
+
+// ====================
+// WALLET MAINTENANCE
+// ====================
+
+// Check wallet maintenance status on page load
+async function checkWalletMaintenanceStatus() {
+    try {
+        const response = await fetch('/api/wallet/maintenance-status');
+        const result = await response.json();
+        
+        if (result.success && result.status) {
+            const status = result.status;
+            
+            // Show maintenance banners if needed
+            if (status.maintenance_mode) {
+                showMaintenanceBanner('full', status.maintenance_message);
+                disableWalletForms();
+            } else {
+                // Check individual operations
+                if (status.deposit_disabled) {
+                    showMaintenanceBanner('deposit', status.deposit_message);
+                    disableDepositForm();
+                }
+                
+                if (status.withdrawal_disabled) {
+                    showMaintenanceBanner('withdrawal', status.withdrawal_message);
+                    disableWithdrawalForm();
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Failed to check maintenance status:', error);
+    }
+}
+
+// Show maintenance banner
+function showMaintenanceBanner(type, message) {
+    const container = document.querySelector('.wallet-actions') || document.querySelector('.main-content');
+    
+    if (!container) return;
+    
+    // Remove existing maintenance banners
+    const existingBanners = container.querySelectorAll('.maintenance-banner');
+    existingBanners.forEach(banner => banner.remove());
+    
+    // Create maintenance banner
+    const banner = document.createElement('div');
+    banner.className = 'maintenance-banner maintenance-' + type;
+    banner.innerHTML = `
+        <div class="maintenance-content">
+            <div class="maintenance-icon">🔧</div>
+            <div class="maintenance-text">
+                <h4>Maintenance Mode</h4>
+                <p>${message}</p>
+            </div>
+        </div>
+    `;
+    
+    // Insert banner at the top
+    container.insertBefore(banner, container.firstChild);
+}
+
+// Disable all wallet forms
+function disableWalletForms() {
+    disableDepositForm();
+    disableWithdrawalForm();
+}
+
+// Disable deposit form
+function disableDepositForm() {
+    const depositForm = document.getElementById('depositForm');
+    const depositCard = depositForm ? depositForm.closest('.action-card') : null;
+    
+    if (depositForm) {
+        const inputs = depositForm.querySelectorAll('input, button');
+        inputs.forEach(input => {
+            input.disabled = true;
+        });
+        
+        const submitBtn = depositForm.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.textContent = '🔧 Maintenance Mode';
+            submitBtn.className = 'btn btn-disabled';
+        }
+    }
+    
+    if (depositCard) {
+        depositCard.classList.add('maintenance-disabled');
+    }
+    
+    // Disable quick amount buttons
+    const quickDepositBtns = document.querySelectorAll('.quick-amounts button[onclick*="setDepositAmount"]');
+    quickDepositBtns.forEach(btn => {
+        btn.disabled = true;
+        btn.classList.add('disabled');
+    });
+}
+
+// Disable withdrawal form
+function disableWithdrawalForm() {
+    const withdrawForm = document.getElementById('withdrawForm');
+    const withdrawCard = withdrawForm ? withdrawForm.closest('.action-card') : null;
+    
+    if (withdrawForm) {
+        const inputs = withdrawForm.querySelectorAll('input, button');
+        inputs.forEach(input => {
+            input.disabled = true;
+        });
+        
+        const submitBtn = withdrawForm.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.textContent = '🔧 Maintenance Mode';
+            submitBtn.className = 'btn btn-disabled';
+        }
+    }
+    
+    if (withdrawCard) {
+        withdrawCard.classList.add('maintenance-disabled');
+    }
+    
+    // Disable quick amount buttons
+    const quickWithdrawBtns = document.querySelectorAll('.quick-amounts button[onclick*="setWithdrawAmount"], .quick-amounts button[onclick*="setMaxWithdraw"]');
+    quickWithdrawBtns.forEach(btn => {
+        btn.disabled = true;
+        btn.classList.add('disabled');
+    });
+}
+
+// Enable all wallet forms (when maintenance is disabled)
+function enableWalletForms() {
+    enableDepositForm();
+    enableWithdrawalForm();
+    
+    // Remove maintenance banners
+    const banners = document.querySelectorAll('.maintenance-banner');
+    banners.forEach(banner => banner.remove());
+}
+
+// Enable deposit form
+function enableDepositForm() {
+    const depositForm = document.getElementById('depositForm');
+    const depositCard = depositForm ? depositForm.closest('.action-card') : null;
+    
+    if (depositForm) {
+        const inputs = depositForm.querySelectorAll('input, button');
+        inputs.forEach(input => {
+            input.disabled = false;
+        });
+        
+        const submitBtn = depositForm.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.textContent = '💰 Deposit Money';
+            submitBtn.className = 'btn btn-primary';
+        }
+    }
+    
+    if (depositCard) {
+        depositCard.classList.remove('maintenance-disabled');
+    }
+    
+    // Enable quick amount buttons
+    const quickDepositBtns = document.querySelectorAll('.quick-amounts button[onclick*="setDepositAmount"]');
+    quickDepositBtns.forEach(btn => {
+        btn.disabled = false;
+        btn.classList.remove('disabled');
+    });
+}
+
+// Enable withdrawal form
+function enableWithdrawalForm() {
+    const withdrawForm = document.getElementById('withdrawForm');
+    const withdrawCard = withdrawForm ? withdrawForm.closest('.action-card') : null;
+    
+    if (withdrawForm) {
+        const inputs = withdrawForm.querySelectorAll('input, button');
+        inputs.forEach(input => {
+            input.disabled = false;
+        });
+        
+        const submitBtn = withdrawForm.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.textContent = '💸 Request Withdrawal';
+            submitBtn.className = 'btn btn-secondary';
+        }
+    }
+    
+    if (withdrawCard) {
+        withdrawCard.classList.remove('maintenance-disabled');
+    }
+    
+    // Enable quick amount buttons
+    const quickWithdrawBtns = document.querySelectorAll('.quick-amounts button[onclick*="setWithdrawAmount"], .quick-amounts button[onclick*="setMaxWithdraw"]');
+    quickWithdrawBtns.forEach(btn => {
+        btn.disabled = false;
+        btn.classList.remove('disabled');
+    });
+}
+
+// Override existing form submission handlers to check maintenance
+function enhanceFormHandlersWithMaintenance() {
+    const depositForm = document.getElementById('depositForm');
+    const withdrawForm = document.getElementById('withdrawForm');
+    
+    if (depositForm) {
+        const originalSubmitHandler = depositForm.onsubmit;
+        depositForm.addEventListener('submit', async function(e) {
+            // Check maintenance status before allowing submission
+            try {
+                const response = await fetch('/api/wallet/maintenance-status');
+                const result = await response.json();
+                
+                if (result.success && result.status) {
+                    if (result.status.maintenance_mode || result.status.deposit_disabled) {
+                        e.preventDefault();
+                        showMessage('Deposit is currently unavailable due to maintenance.', 'error');
+                        return false;
+                    }
+                }
+            } catch (error) {
+                console.log('Could not check maintenance status, proceeding...');
+            }
+        });
+    }
+    
+    if (withdrawForm) {
+        withdrawForm.addEventListener('submit', async function(e) {
+            // Check maintenance status before allowing submission
+            try {
+                const response = await fetch('/api/wallet/maintenance-status');
+                const result = await response.json();
+                
+                if (result.success && result.status) {
+                    if (result.status.maintenance_mode || result.status.withdrawal_disabled) {
+                        e.preventDefault();
+                        showMessage('Withdrawal is currently unavailable due to maintenance.', 'error');
+                        return false;
+                    }
+                }
+            } catch (error) {
+                console.log('Could not check maintenance status, proceeding...');
+            }
+        });
+    }
+}
+
