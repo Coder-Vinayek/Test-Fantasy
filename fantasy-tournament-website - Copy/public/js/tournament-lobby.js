@@ -189,7 +189,7 @@ document.addEventListener('DOMContentLoaded', function() {
             tournamentName.textContent = tournament.name;
             tournamentStatus.textContent = tournament.status;
             tournamentStatus.className = `status-badge status-${tournament.status}`;
-            prizePool.textContent = `$${tournament.prize_pool}`;
+            prizePool.textContent = `₹${tournament.prize_pool}`;
             participantCount.textContent = `${tournament.current_participants}/${tournament.max_participants}`;
             startTime.textContent = new Date(tournament.start_date).toLocaleString();
             tournamentDescription.textContent = tournament.description || 'No description available';
