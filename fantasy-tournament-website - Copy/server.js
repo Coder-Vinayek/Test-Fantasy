@@ -7,6 +7,7 @@ const path = require('path');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const fs = require('fs');
+const WalletMaintenanceMiddleware = require('./wallet-maintenance-middleware');
 
 // Load environment variables
 require('dotenv').config();
@@ -15,6 +16,7 @@ require('dotenv').config();
 const { supabase } = require('./database/supabase');
 
 const app = express();
+const walletMaintenanceMiddleware = new WalletMaintenanceMiddleware();
 const PORT = process.env.PORT || 3001;
 
 // Enhanced Middleware setup
@@ -365,9 +367,28 @@ app.get('/api/tournaments', requireAuth, async (req, res) => {
     }
 });
 
+// Get wallet maintenance status
+app.get('/api/wallet/maintenance-status', requireAuth, (req, res) => {
+    try {
+        const maintenanceManager = walletMaintenanceMiddleware.getMaintenanceManager();
+        const status = maintenanceManager.getMaintenanceStatus();
+        
+        res.json({
+            success: true,
+            status: status
+        });
+    } catch (error) {
+        console.error('Get maintenance status error:', error);
+        res.status(500).json({ 
+            error: 'Failed to get maintenance status',
+            status: { maintenance_mode: false }
+        });
+    }
+});
 
 // API Routes - Wallet
-app.post('/api/wallet/deposit', requireAuth, async (req, res) => {
+app.post('/api/wallet/deposit', requireAuth, walletMaintenanceMiddleware.checkDepositMaintenance(), async (req, res) => {
+    // Your existing deposit code remains the same
     const { amount } = req.body;
     const depositAmount = parseFloat(amount);
 
@@ -424,7 +445,8 @@ app.post('/api/wallet/deposit', requireAuth, async (req, res) => {
 });
 
 //  Withdrawal system with minimum 25rs requirement and payout requests
-app.post('/api/wallet/withdraw', requireAuth, checkBanStatus, async (req, res) => {
+app.post('/api/wallet/withdraw', requireAuth, checkBanStatus, walletMaintenanceMiddleware.checkWithdrawalMaintenance(), async (req, res) => {
+    // Your existing withdrawal code remains the same
     const { amount } = req.body;
     const withdrawAmount = parseFloat(amount);
 
@@ -536,6 +558,100 @@ app.get('/api/wallet/transactions', requireAuth, async (req, res) => {
     } catch (error) {
         console.error('Get transactions error:', error);
         return res.status(500).json({ error: 'Failed to get transactions' });
+    }
+});
+
+// Enable wallet maintenance mode (Admin only)
+app.post('/api/admin/wallet/enable-maintenance', requireAdmin, (req, res) => {
+    try {
+        const { message } = req.body;
+        const maintenanceManager = walletMaintenanceMiddleware.getMaintenanceManager();
+        
+        const success = maintenanceManager.enableMaintenanceMode(
+            message || "Wallet services are temporarily unavailable for maintenance. Please try again later.",
+            req.session.username || req.session.userId
+        );
+        
+        if (success) {
+            res.json({ 
+                success: true, 
+                message: 'Wallet maintenance mode enabled successfully' 
+            });
+        } else {
+            res.status(500).json({ 
+                error: 'Failed to enable maintenance mode' 
+            });
+        }
+    } catch (error) {
+        console.error('Enable maintenance mode error:', error);
+        res.status(500).json({ 
+            error: 'Failed to enable maintenance mode' 
+        });
+    }
+});
+
+// Disable wallet maintenance mode (Admin only)
+app.post('/api/admin/wallet/disable-maintenance', requireAdmin, (req, res) => {
+    try {
+        const maintenanceManager = walletMaintenanceMiddleware.getMaintenanceManager();
+        
+        const success = maintenanceManager.disableMaintenanceMode(
+            req.session.username || req.session.userId
+        );
+        
+        if (success) {
+            res.json({ 
+                success: true, 
+                message: 'Wallet maintenance mode disabled successfully' 
+            });
+        } else {
+            res.status(500).json({ 
+                error: 'Failed to disable maintenance mode' 
+            });
+        }
+    } catch (error) {
+        console.error('Disable maintenance mode error:', error);
+        res.status(500).json({ 
+            error: 'Failed to disable maintenance mode' 
+        });
+    }
+});
+
+// Toggle specific wallet operations (Admin only)
+app.post('/api/admin/wallet/toggle-operation', requireAdmin, (req, res) => {
+    try {
+        const { operation, disabled, message } = req.body;
+        
+        if (!operation || !['deposit', 'withdrawal'].includes(operation)) {
+            return res.status(400).json({ 
+                error: 'Invalid operation. Must be "deposit" or "withdrawal"' 
+            });
+        }
+        
+        const maintenanceManager = walletMaintenanceMiddleware.getMaintenanceManager();
+        
+        const success = maintenanceManager.toggleOperation(
+            operation,
+            Boolean(disabled),
+            message,
+            req.session.username || req.session.userId
+        );
+        
+        if (success) {
+            res.json({ 
+                success: true, 
+                message: `${operation} ${disabled ? 'disabled' : 'enabled'} successfully` 
+            });
+        } else {
+            res.status(500).json({ 
+                error: `Failed to toggle ${operation}` 
+            });
+        }
+    } catch (error) {
+        console.error('Toggle operation error:', error);
+        res.status(500).json({ 
+            error: 'Failed to toggle operation' 
+        });
     }
 });
 
@@ -882,9 +998,6 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
         return res.status(500).json({ error: 'Failed to get users' });
     }
 });
-
-// Rest of the existing admin routes remain unchanged...
-// (I'll continue with the remaining routes from your original server.js)
 
 // Admin Tournaments Routes
 app.get('/api/admin/tournaments', requireAdmin, async (req, res) => {
